@@ -25,7 +25,7 @@ APPS = [
         "id": "counta",
         "name": "Counta",
         "icon": "🏠",
-        "description": "Личные и семейные финансы: учёт, аналитика, советы.",
+        "description": "Деньги перестают течь сквозь пальцы: учёт, аналитика, советы.",
         "url": "https://counta.avalone.online",
     },
 ]

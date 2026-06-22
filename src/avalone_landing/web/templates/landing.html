@@ -79,9 +79,9 @@ footer{margin-top:40px;text-align:center;color:var(--muted);font-size:13px}
 
 <script>
 const I18N = {
-  ru:{title:'avalone.online',subtitle:'Простые приложения, которые решают реальные задачи людей.',footer:'© avalone.online'},
-  en:{title:'avalone.online',subtitle:'Simple apps that solve real problems for real people.',footer:'© avalone.online'},
-  ko:{title:'avalone.online',subtitle:'사람들의 실제 문제를 해결하는 간단한 앱.',footer:'© avalone.online'}
+  ru:{title:'avalone.online',subtitle:'Практичные решения для быта и бизнеса: приложения, курсы и тренинги.',footer:'© avalone.online'},
+  en:{title:'avalone.online',subtitle:'Practical solutions for life and business: apps, courses and trainings.',footer:'© avalone.online'},
+  ko:{title:'avalone.online',subtitle:'일상과 비즈니스를 위한 실용적인 솔루션: 앱, 강의 및 교육.',footer:'© avalone.online'}
 };
 function detectLang(){var s=navigator.language||navigator.userLanguage||'ru';if(s.startsWith('ko'))return'ko';if(s.startsWith('en'))return'en';return'ru';}
 function resolveLang(l){return l==='auto'?detectLang():(I18N[l]?l:'ru');}
