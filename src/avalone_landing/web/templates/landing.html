@@ -175,6 +175,7 @@ footer{margin-top:40px;text-align:center;color:var(--muted);font-size:12px}
         </div>
       </div>
       <div class="header-actions">
+        <button class="icon-btn" id="installBtn" onclick="installPWA()" title="Установить" style="display:none">⬇️</button>
         <select class="lang-select" id="lang" onchange="setLang(this.value)" title="Язык">
           <option value="auto">🌐</option>
           <option value="ru">RU</option>
@@ -190,14 +191,14 @@ footer{margin-top:40px;text-align:center;color:var(--muted);font-size:12px}
       <div class="status-title"><span class="status-dot dev"></span><span data-i="status_title">В разработке</span></div>
       <p class="status-text" data-i="status_text">Первая ветка — Работа. Скоро здесь будут поездки, смены и координация.</p>
       <div class="status-actions">
-        <a class="pill-btn" href="https://counta.avalone.online" data-i="status_btn1">🪙 Открыть Counta</a>
+        <a class="pill-btn" href="https://counta.avalone.online" target="_blank" rel="noopener" data-i="status_btn1">🪙 Открыть Counta ↗</a>
         <a class="pill-btn" href="#" onclick="showComingSoon('Работа');return false" data-i="status_btn2">🛠️ Узнать о Работе</a>
       </div>
     </div>
 
     <div class="section-title" data-i="quick_title">Быстрые действия</div>
     <div class="quick-actions">
-      <a class="quick-action" href="https://counta.avalone.online" data-i="quick_1">🪙 Бюджет</a>
+      <a class="quick-action" href="https://counta.avalone.online" target="_blank" rel="noopener" data-i="quick_1">🪙 Бюджет ↗</a>
       <a class="quick-action" href="#" onclick="showComingSoon('Работа');return false" data-i="quick_2">🛠️ Работа</a>
       <a class="quick-action" href="#" onclick="showComingSoon('Профиль');return false" data-i="quick_3">👤 Профиль</a>
       <a class="quick-action" href="#" onclick="showComingSoon('Сообщества');return false" data-i="quick_4">🌐 Сообщества</a>
@@ -216,7 +217,7 @@ footer{margin-top:40px;text-align:center;color:var(--muted);font-size:12px}
         {% if branch.actions %}
         <div class="branch-actions">
           {% for action in branch.actions %}
-          <span class="branch-action" onclick="event.stopPropagation();event.preventDefault();window.location.href='{{ action.url }}'">{{ action.label }}</span>
+          <span class="branch-action" onclick="event.stopPropagation();event.preventDefault();window.open('{{ action.url }}','_blank','noopener,noreferrer')">{{ action.label }} ↗</span>
           {% endfor %}
         </div>
         {% endif %}
@@ -244,9 +245,9 @@ footer{margin-top:40px;text-align:center;color:var(--muted);font-size:12px}
         <span class="bottom-icon">◈</span>
         <span data-i="nav_home">Портал</span>
       </a>
-      <a class="bottom-item" href="https://counta.avalone.online">
+      <a class="bottom-item" href="https://counta.avalone.online" target="_blank" rel="noopener">
         <span class="bottom-icon">🪙</span>
-        <span data-i="nav_work">Финансы</span>
+        <span data-i="nav_work">Финансы ↗</span>
       </a>
       <a class="bottom-item" href="#" onclick="showComingSoon('Сообщества');return false">
         <span class="bottom-icon">💬</span>
@@ -260,6 +261,16 @@ footer{margin-top:40px;text-align:center;color:var(--muted);font-size:12px}
   </nav>
 
 <script>
+var deferredInstallPrompt = null;
+var isInstalled = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+function isIOS(){
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+function isIOSSafari(){
+  return isIOS() && /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS/.test(navigator.userAgent);
+}
+
 if('serviceWorker' in navigator){
   window.addEventListener('load',function(){
     navigator.serviceWorker.register('/sw.js').then(function(reg){
@@ -269,6 +280,64 @@ if('serviceWorker' in navigator){
     });
   });
 }
+
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  showInstallButton();
+});
+
+window.addEventListener('appinstalled', function(){
+  deferredInstallPrompt = null;
+  hideInstallButton();
+});
+
+function showInstallButton(){
+  if(isInstalled)return;
+  var btn = document.getElementById('installBtn');
+  if(btn)btn.style.display = 'flex';
+}
+function hideInstallButton(){
+  var btn = document.getElementById('installBtn');
+  if(btn)btn.style.display = 'none';
+}
+function installPWA(){
+  if(isIOSSafari()){
+    alert('На iPhone: нажмите «Поделиться» внизу Safari, затем «На экран «Домой»».');
+    return;
+  }
+  if(!deferredInstallPrompt){
+    // Try to re-trigger by checking if install is available.
+    if(isInstalled){
+      alert('Приложение уже установлено.');
+    }else{
+      alert('Установка доступна в Chrome/Edge на Android или Windows. Обновите страницу.');
+    }
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.then(function(choice){
+    if(choice.outcome === 'accepted'){
+      hideInstallButton();
+    }
+    deferredInstallPrompt = null;
+  });
+}
+
+// Show install button if conditions are right.
+(function checkInstallable(){
+  if(isInstalled)return;
+  // If on iOS Safari, always show install hint button.
+  if(isIOSSafari()){
+    showInstallButton();
+    return;
+  }
+  // On other platforms, wait for beforeinstallprompt.
+  // If it doesn't fire within 3s, still show button as a hint.
+  setTimeout(function(){
+    if(!isInstalled)showInstallButton();
+  }, 3000);
+})();
 
 const I18N = {
   ru:{

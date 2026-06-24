@@ -19,6 +19,7 @@
 - [`docs/commute-scenario.md`](docs/commute-scenario.md) — детальный сценарий поездок на работу.
 - [`docs/portal-navigation.md`](docs/portal-navigation.md) — концепция навигации по порталу метавселенной.
 - [`docs/tech-stack.md`](docs/tech-stack.md) — предварительный технологический стек.
+- [`docs/identity-architecture.md`](docs/identity-architecture.md) — единая авторизация Avalone для всех веток.
 
 ## Текущее состояние
 

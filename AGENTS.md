@@ -9,9 +9,9 @@
 - **Selected template:** `software-project-rules` + `project-rules`
 - **Named source basis:** RUP, ISO/IEC/IEEE 12207, 29148, 14764, IEEE 828, Google eng-practices, ToIP stack
 - **Tailoring notes:** проект находится в фазе зарождения идеи + прототипирования. Исследования и документирование продолжаются параллельно с созданием работающего портала и первой ветки.
-- **Current phase:** Inception / concept + Domain research + Portal prototype
-- **Current gate status:** концепция сформулирована, сущности выделены, архитектура уровней, проработан первый сценарий, работает портал с ветками
-- **Next exact slice:** наполнить ветку «Работа» (Routa) функционалом поездок на работу
+- **Current phase:** Inception / concept + Domain research + Portal prototype + Identity design
+- **Current gate status:** концепция сформулирована, сущности выделены, архитектура уровней, проработан первый сценарий, работает портал с ветками, спроектирована единая авторизация
+- **Next exact slice:** добавить phone auth в Avalone portal
 
 ## Read order для проекта
 
