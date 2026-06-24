@@ -30,11 +30,30 @@
   - Документация проекта в `docs/`.
 - **Следующий шаг:** наполнить ветку «Работа» реальным функционалом поездок на работу.
 
-## Запуск landing локально
+## Запуск
+
+### Локально
 
 ```bash
 uv sync
 uv run python -m uvicorn avalone_landing.web.app:app --host 127.0.0.1 --port 8811
+```
+
+### Продакшен (macOS / launchd)
+
+Сайт запускается как системный сервис через `launchd` и не зависит от сессии агента:
+
+- Профиль: `~/Library/LaunchAgents/online.avalone.landing.plist`
+- Логи: `~/Library/Logs/avalone-landing.log`
+- Порт: `127.0.0.1:8811`
+
+```bash
+# Перезапуск
+launchctl unload ~/Library/LaunchAgents/online.avalone.landing.plist
+launchctl load ~/Library/LaunchAgents/online.avalone.landing.plist
+
+# Статус
+launchctl list | grep online.avalone.landing
 ```
 
 ## Проверка
