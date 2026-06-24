@@ -1,4 +1,4 @@
-"""Runtime configuration and app catalog for avalone.online landing."""
+"""Runtime configuration and universe branches for avalone.online portal."""
 
 from functools import lru_cache
 
@@ -18,8 +18,108 @@ def settings() -> Settings:
     return Settings()
 
 
-# Catalog of apps hosted under the avalone.online umbrella.
-# Each entry is shown as a card on the landing page.
+# Branches of the Avalone metaverse.
+# Each branch represents a life area. Active branches link to real apps,
+# coming-soon branches show a teaser and (optionally) a waitlist form.
+BRANCHES = [
+    {
+        "id": "work",
+        "name": "Работа",
+        "name_en": "Work",
+        "name_ko": "일",
+        "icon": "🛠️",
+        "description": "Арбайт, смены, поездки, фриланс, карьера.",
+        "status": "active",
+        "app_id": "routa",
+        "url": "https://routa.avalone.online",
+        "actions": [
+            {"label": "Мои поездки", "url": "https://routa.avalone.online/trips"},
+            {"label": "Найти смену", "url": "https://routa.avalone.online/shifts"},
+        ],
+    },
+    {
+        "id": "money",
+        "name": "Финансы",
+        "name_en": "Finance",
+        "name_ko": "재정",
+        "icon": "🪙",
+        "description": "Учёт, бюджет, аналитика, советы.",
+        "status": "active",
+        "app_id": "counta",
+        "url": "https://counta.avalone.online",
+        "actions": [
+            {"label": "Counta", "url": "https://counta.avalone.online"},
+        ],
+    },
+    {
+        "id": "education",
+        "name": "Образование",
+        "name_en": "Education",
+        "name_ko": "교육",
+        "icon": "📚",
+        "description": "Курсы, языки, переподготовка, адаптация.",
+        "status": "coming_soon",
+        "url": None,
+        "actions": [],
+    },
+    {
+        "id": "housing",
+        "name": "Жильё",
+        "name_en": "Housing",
+        "name_ko": "주거",
+        "icon": "🏠",
+        "description": "Аренда, соседи, бытовые вопросы.",
+        "status": "coming_soon",
+        "url": None,
+        "actions": [],
+    },
+    {
+        "id": "tourism",
+        "name": "Туризм",
+        "name_en": "Tourism",
+        "name_ko": "관광",
+        "icon": "✈️",
+        "description": "Трансферы, экскурсии, путешествия.",
+        "status": "coming_soon",
+        "url": None,
+        "actions": [],
+    },
+    {
+        "id": "health",
+        "name": "Здоровье",
+        "name_en": "Health",
+        "name_ko": "건강",
+        "icon": "🏥",
+        "description": "Клиники, страховка, записи.",
+        "status": "coming_soon",
+        "url": None,
+        "actions": [],
+    },
+    {
+        "id": "transport",
+        "name": "Транспорт",
+        "name_en": "Transport",
+        "name_ko": "교통",
+        "icon": "🚐",
+        "description": "Маршруты, водители, передвижение.",
+        "status": "coming_soon",
+        "url": None,
+        "actions": [],
+    },
+    {
+        "id": "community",
+        "name": "Сообщества",
+        "name_en": "Community",
+        "name_ko": "커뮤니티",
+        "icon": "🌐",
+        "description": "Люди, группы, мероприятия, помощь.",
+        "status": "coming_soon",
+        "url": None,
+        "actions": [],
+    },
+]
+
+# Legacy catalog kept for API compatibility.
 APPS = [
     {
         "id": "counta",

@@ -4,42 +4,159 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0f1115">
+<meta name="description" content="Avalone — цифровая вселенная поверх реального мира.">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<title>avalone.online</title>
-<script>
-(function(){try{var t=localStorage.getItem('avalone_theme');
-  if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;}catch(e){}})();
-</script>
+<title>Avalone</title>
 <link rel="manifest" href="/manifest.json">
 <style>
-:root{--bg:#0f1115;--card:#1a1d24;--line:#2a2f3a;--txt:#e6e8ec;--muted:#9aa3b2;
-      --green:#3fb950;--red:#f85149;--accent:#58a6ff;--amber:#d29922}
-@media (prefers-color-scheme: light){
-  :root:not([data-theme="dark"]){--bg:#f4f6f9;--card:#ffffff;--line:#d6dbe3;--txt:#1a1d24;
-    --muted:#5b6573;--green:#1a7f37;--red:#cf222e;--accent:#0969da;--amber:#9a6700}
+:root{
+  --bg:#0a0c10;
+  --bg-2:#11141b;
+  --card:#151922;
+  --card-2:#1c212c;
+  --line:#2a3040;
+  --line-2:#3a4156;
+  --txt:#f0f2f6;
+  --muted:#8b94a7;
+  --accent:#7c5cff;
+  --accent-2:#a78bfa;
+  --green:#3fb950;
+  --amber:#d29922;
+  --red:#f85149;
+  --shadow:0 8px 32px rgba(0,0,0,.35);
 }
-:root[data-theme="light"]{--bg:#f4f6f9;--card:#ffffff;--line:#d6dbe3;--txt:#1a1d24;
-  --muted:#5b6573;--green:#1a7f37;--red:#cf222e;--accent:#0969da;--amber:#9a6700}
-:root[data-theme="dark"]{--bg:#0f1115;--card:#1a1d24;--line:#2a2f3a;--txt:#e6e8ec;
-  --muted:#9aa3b2;--green:#3fb950;--red:#f85149;--accent:#58a6ff;--amber:#d29922}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#f5f7fb;
+    --bg-2:#eef1f7;
+    --card:#ffffff;
+    --card-2:#f8f9fc;
+    --line:#dde2ec;
+    --line-2:#c9d0e0;
+    --txt:#131620;
+    --muted:#5a6275;
+    --accent:#6338e0;
+    --accent-2:#7c5cff;
+    --green:#1a7f37;
+    --amber:#9a6700;
+    --red:#cf222e;
+    --shadow:0 8px 32px rgba(20,20,40,.12);
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f5f7fb;--bg-2:#eef1f7;--card:#ffffff;--card-2:#f8f9fc;
+  --line:#dde2ec;--line-2:#c9d0e0;--txt:#131620;--muted:#5a6275;
+  --accent:#6338e0;--accent-2:#7c5cff;--green:#1a7f37;--amber:#9a6700;--red:#cf222e;
+  --shadow:0 8px 32px rgba(20,20,40,.12);
+}
+:root[data-theme="dark"]{
+  --bg:#0a0c10;--bg-2:#11141b;--card:#151922;--card-2:#1c212c;
+  --line:#2a3040;--line-2:#3a4156;--txt:#f0f2f6;--muted:#8b94a7;
+  --accent:#7c5cff;--accent-2:#a78bfa;--green:#3fb950;--amber:#d29922;--red:#f85149;
+  --shadow:0 8px 32px rgba(0,0,0,.35);
+}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
-.wrap{max-width:560px;margin:0 auto;padding:40px 16px}
-header{text-align:center;margin-bottom:36px}
-.logo{font-size:42px;margin-bottom:8px}
-h1{font-size:24px;margin:0 0 8px}
-p.lead{margin:0;color:var(--muted);font-size:15px}
-.apps{display:grid;gap:14px}
-.app-card{display:block;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;text-decoration:none;color:inherit;transition:transform .08s,border-color .15s}
-.app-card:hover{border-color:var(--accent)}
-.app-card:active{transform:scale(.99)}
-.app-head{display:flex;align-items:center;gap:14px;margin-bottom:10px}
-.app-icon{font-size:36px;line-height:1}
-.app-name{font-size:18px;font-weight:600}
-.app-desc{color:var(--muted);font-size:14px;line-height:1.4}
-.app-arrow{margin-left:auto;color:var(--muted);font-size:20px}
-footer{margin-top:40px;text-align:center;color:var(--muted);font-size:13px}
-.lang-switch{position:fixed;top:14px;right:14px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--txt);font-size:14px;cursor:pointer}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen,Ubuntu,sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{
+  content:'';position:fixed;inset:0;z-index:-1;
+  background:radial-gradient(circle at 20% 10%, rgba(124,92,255,.12), transparent 40%),
+             radial-gradient(circle at 80% 90%, rgba(124,92,255,.08), transparent 35%);
+  pointer-events:none;
+}
+.wrap{max-width:720px;margin:0 auto;padding:24px 16px 100px}
+
+/* Header */
+.portal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo-mark{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:var(--shadow)}
+.brand-title{font-size:22px;font-weight:700;letter-spacing:-.3px}
+.brand-sub{color:var(--muted);font-size:12px;margin-top:-2px}
+.header-actions{display:flex;gap:10px;align-items:center}
+.icon-btn{width:40px;height:40px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--txt);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;transition:background .15s,border-color .15s}
+.icon-btn:hover{border-color:var(--accent);background:var(--card-2)}
+
+/* Status card */
+.status-card{
+  background:linear-gradient(135deg,rgba(124,92,255,.18),rgba(124,92,255,.06));
+  border:1px solid var(--line-2);
+  border-radius:20px;padding:18px 20px;margin-bottom:20px;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+.status-card.active{background:linear-gradient(135deg,rgba(63,185,80,.15),rgba(63,185,80,.05));border-color:rgba(63,185,80,.3)}
+.status-title{font-size:14px;font-weight:600;color:var(--txt);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
+.status-dot.active{background:var(--green);animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.status-text{color:var(--muted);font-size:13px;line-height:1.5;margin:0}
+.status-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.pill-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;background:var(--card);border:1px solid var(--line);color:var(--txt);font-size:13px;font-weight:500;text-decoration:none;transition:background .15s,border-color .15s}
+.pill-btn:hover{border-color:var(--accent);background:var(--card-2)}
+
+/* Sections */
+.section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:28px 0 12px}
+
+/* Bento grid */
+.bento{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media (min-width:560px){.bento{grid-template-columns:repeat(3,1fr);gap:14px}}
+.branch{
+  position:relative;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;
+  text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:8px;
+  transition:transform .1s,border-color .15s,box-shadow .15s;
+}
+.branch:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.branch:active{transform:scale(.98)}
+.branch.active{border-color:rgba(124,92,255,.4);background:linear-gradient(180deg,var(--card),var(--card-2))}
+.branch.coming{opacity:.72}
+.branch-icon{font-size:32px;line-height:1}
+.branch-name{font-size:15px;font-weight:700}
+.branch-desc{font-size:12px;color:var(--muted);line-height:1.35;flex:1}
+.branch-badge{
+  position:absolute;top:10px;right:10px;font-size:10px;font-weight:700;text-transform:uppercase;
+  padding:3px 7px;border-radius:999px;background:rgba(217,153,34,.15);color:var(--amber);border:1px solid rgba(217,153,34,.25)
+}
+.branch-badge.active{background:rgba(63,185,80,.15);color:var(--green);border-color:rgba(63,185,80,.25)}
+.branch-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.branch-action{font-size:11px;padding:5px 9px;border-radius:8px;background:var(--bg-2);border:1px solid var(--line);color:var(--txt);text-decoration:none;white-space:nowrap}
+.branch-action:hover{border-color:var(--accent)}
+
+/* Quick actions */
+.quick-actions{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
+.quick-actions::-webkit-scrollbar{display:none}
+.quick-action{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:14px;background:var(--card);border:1px solid var(--line);color:var(--txt);font-size:14px;font-weight:500;text-decoration:none;transition:border-color .15s}
+.quick-action:hover{border-color:var(--accent);background:var(--card-2)}
+
+/* Coming soon panel */
+.teaser-panel{background:var(--card);border:1px dashed var(--line-2);border-radius:18px;padding:18px;text-align:center;margin-top:24px}
+.teaser-title{font-size:15px;font-weight:700;margin-bottom:6px}
+.teaser-text{font-size:13px;color:var(--muted);margin-bottom:14px}
+.teaser-form{display:flex;gap:10px;max-width:360px;margin:0 auto}
+.teaser-input{flex:1;padding:10px 14px;border-radius:12px;background:var(--bg-2);border:1px solid var(--line);color:var(--txt);font-size:14px;outline:none}
+.teaser-input:focus{border-color:var(--accent)}
+.teaser-btn{padding:10px 16px;border-radius:12px;background:var(--accent);border:none;color:#fff;font-size:14px;font-weight:600;cursor:pointer}
+
+/* Bottom nav */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  background:rgba(10,12,16,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-top:1px solid var(--line);z-index:100;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]) .bottom-nav{background:rgba(245,247,251,.92)}
+}
+:root[data-theme="light"] .bottom-nav{background:rgba(245,247,251,.92)}
+.bottom-nav-inner{max-width:720px;margin:0 auto;display:flex;justify-content:space-around;align-items:center}
+.bottom-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 12px;color:var(--muted);text-decoration:none;font-size:11px;border-radius:12px;transition:color .15s,background .15s}
+.bottom-item:hover{color:var(--txt)}
+.bottom-item.active{color:var(--accent);background:rgba(124,92,255,.1)}
+.bottom-icon{font-size:22px}
+
+/* Footer */
+footer{margin-top:40px;text-align:center;color:var(--muted);font-size:12px}
+
+/* Language switch */
+.lang-switch{position:fixed;top:14px;right:62px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--txt);font-size:13px;cursor:pointer;z-index:101}
 </style>
 </head>
 <body>
@@ -51,48 +168,177 @@ footer{margin-top:40px;text-align:center;color:var(--muted);font-size:13px}
   </select>
 
   <div class="wrap">
-    <header>
-      <div class="logo">◈</div>
-      <h1 data-i="title">avalone.online</h1>
-      <p class="lead" data-i="subtitle">Пространство простых приложений для личного и семейного учёта.</p>
+    <header class="portal-header">
+      <div class="brand">
+        <div class="logo-mark">◈</div>
+        <div>
+          <div class="brand-title" data-i="brand">Avalone</div>
+          <div class="brand-sub" data-i="tagline">Цифровая вселенная</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" onclick="toggleTheme()" title="Тема">🌓</button>
+        <button class="icon-btn" onclick="showSearch()" title="Поиск">⌘</button>
+      </div>
     </header>
 
-    <main class="apps" id="apps">
-      {% for app in apps %}
-      <a class="app-card" href="{{ app.url }}">
-        <div class="app-head">
-          <div class="app-icon">{{ app.icon }}</div>
-          <div>
-            <div class="app-name">{{ app.name }}</div>
-            <div class="app-desc">{{ app.description }}</div>
-          </div>
-          <div class="app-arrow">→</div>
+    <div class="status-card active" id="statusCard">
+      <div class="status-title"><span class="status-dot active"></span><span data-i="status_title">Активно</span></div>
+      <p class="status-text" data-i="status_text">Ветка «Работа» уже работает. Routa помогает координировать поездки на завод.</p>
+      <div class="status-actions">
+        <a class="pill-btn" href="https://routa.avalone.online" data-i="status_btn1">🚐 Открыть Routa</a>
+        <a class="pill-btn" href="https://counta.avalone.online" data-i="status_btn2">🪙 Counta</a>
+      </div>
+    </div>
+
+    <div class="section-title" data-i="quick_title">Быстрые действия</div>
+    <div class="quick-actions">
+      <a class="quick-action" href="https://routa.avalone.online/trips" data-i="quick_1">🚐 Мои поездки</a>
+      <a class="quick-action" href="https://routa.avalone.online/shifts" data-i="quick_2">📋 Смены</a>
+      <a class="quick-action" href="https://counta.avalone.online" data-i="quick_3">🪙 Бюджет</a>
+      <a class="quick-action" href="#" data-i="quick_4">👤 Профиль</a>
+    </div>
+
+    <div class="section-title" data-i="branches_title">Вселенная Avalone</div>
+    <main class="bento" id="branches">
+      {% for branch in branches %}
+      <a class="branch {{ 'active' if branch.status == 'active' else 'coming' }}" href="{{ branch.url or '#' }}" {% if branch.status != 'active' %}onclick="return showComingSoon('{{ branch.name }}')"{% endif %}>
+        <span class="branch-badge {{ 'active' if branch.status == 'active' }}">{{ 'Работает' if branch.status == 'active' else 'Скоро' }}</span>
+        <div class="branch-icon">{{ branch.icon }}</div>
+        <div class="branch-name">{{ branch.name }}</div>
+        <div class="branch-desc">{{ branch.description }}</div>
+        {% if branch.actions %}
+        <div class="branch-actions">
+          {% for action in branch.actions %}
+          <span class="branch-action" onclick="event.stopPropagation();event.preventDefault();window.location.href='{{ action.url }}'">{{ action.label }}</span>
+          {% endfor %}
         </div>
+        {% endif %}
       </a>
       {% endfor %}
     </main>
 
+    <div class="teaser-panel">
+      <div class="teaser-title" data-i="teaser_title">Новые ветки уже в разработке</div>
+      <p class="teaser-text" data-i="teaser_text">Оставьте способ связи, и мы сообщим, когда запустится нужная вам ветка.</p>
+      <form class="teaser-form" onsubmit="return submitWaitlist(event)">
+        <input class="teaser-input" type="text" placeholder="Telegram / KakaoTalk / email" data-i-placeholder="teaser_placeholder">
+        <button class="teaser-btn" type="submit" data-i="teaser_btn">Сообщить</button>
+      </form>
+    </div>
+
     <footer>
-      <span data-i="footer">© avalone.online</span>
+      <span data-i="footer">© Avalone — цифровая вселенная поверх реального мира</span>
     </footer>
   </div>
 
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <a class="bottom-item active" href="/">
+        <span class="bottom-icon">◈</span>
+        <span data-i="nav_home">Портал</span>
+      </a>
+      <a class="bottom-item" href="https://routa.avalone.online">
+        <span class="bottom-icon">🚐</span>
+        <span data-i="nav_work">Работа</span>
+      </a>
+      <a class="bottom-item" href="#" onclick="showComingSoon('Сообщества');return false">
+        <span class="bottom-icon">💬</span>
+        <span data-i="nav_chat">Чат</span>
+      </a>
+      <a class="bottom-item" href="#" onclick="showComingSoon('Профиль');return false">
+        <span class="bottom-icon">👤</span>
+        <span data-i="nav_profile">Профиль</span>
+      </a>
+    </div>
+  </nav>
+
 <script>
 const I18N = {
-  ru:{title:'avalone.online',subtitle:'Практичные решения для быта и бизнеса: приложения, курсы и тренинги.',footer:'© avalone.online'},
-  en:{title:'avalone.online',subtitle:'Practical solutions for life and business: apps, courses and trainings.',footer:'© avalone.online'},
-  ko:{title:'avalone.online',subtitle:'일상과 비즈니스를 위한 실용적인 솔루션: 앱, 강의 및 교육.',footer:'© avalone.online'}
+  ru:{
+    brand:'Avalone',tagline:'Цифровая вселенная',
+    status_title:'Активно',status_text:'Ветка «Работа» уже работает. Routa помогает координировать поездки на завод.',
+    status_btn1:'🚐 Открыть Routa',status_btn2:'🪙 Counta',
+    quick_title:'Быстрые действия',quick_1:'🚐 Мои поездки',quick_2:'📋 Смены',quick_3:'🪙 Бюджет',quick_4:'👤 Профиль',
+    branches_title:'Вселенная Avalone',
+    teaser_title:'Новые ветки уже в разработке',teaser_text:'Оставьте способ связи, и мы сообщим, когда запустится нужная вам ветка.',
+    teaser_placeholder:'Telegram / KakaoTalk / email',teaser_btn:'Сообщить',
+    footer:'© Avalone — цифровая вселенная поверх реального мира',
+    nav_home:'Портал',nav_work:'Работа',nav_chat:'Чат',nav_profile:'Профиль',
+    coming_soon:'Скоро запустим: '
+  },
+  en:{
+    brand:'Avalone',tagline:'Digital universe',
+    status_title:'Active',status_text:'The Work branch is live. Routa helps coordinate rides to the factory.',
+    status_btn1:'🚐 Open Routa',status_btn2:'🪙 Counta',
+    quick_title:'Quick actions',quick_1:'🚐 My rides',quick_2:'📋 Shifts',quick_3:'🪙 Budget',quick_4:'👤 Profile',
+    branches_title:'Avalone Universe',
+    teaser_title:'New branches are in development',teaser_text:'Leave your contact and we will notify you when your branch launches.',
+    teaser_placeholder:'Telegram / KakaoTalk / email',teaser_btn:'Notify me',
+    footer:'© Avalone — a digital universe on top of the real world',
+    nav_home:'Portal',nav_work:'Work',nav_chat:'Chat',nav_profile:'Profile',
+    coming_soon:'Coming soon: '
+  },
+  ko:{
+    brand:'Avalone',tagline:'디지털 우주',
+    status_title:'활성',status_text:'"일" 브랜치가 이미 작동 중입니다. Routa는 공장 출퇴근을 조정합니다.',
+    status_btn1:'🚐 Routa 열기',status_btn2:'🪙 Counta',
+    quick_title:'빠른 작업',quick_1:'🚐 내 출퇴근',quick_2:'📋 교대',quick_3:'🪙 예산',quick_4:'👤 프로필',
+    branches_title:'Avalone 우주',
+    teaser_title:'새로운 브랜치가 개발 중입니다',teaser_text:'연락처를 남기시면 해당 브랜치가 출시되면 알려드립니다.',
+    teaser_placeholder:'Telegram / KakaoTalk / email',teaser_btn:'알림 받기',
+    footer:'© Avalone — 현실 세계 위의 디지털 우주',
+    nav_home:'포털',nav_work:'일',nav_chat:'채팅',nav_profile:'프로필',
+    coming_soon:'곧 출시: '
+  }
 };
-function detectLang(){var s=navigator.language||navigator.userLanguage||'ru';if(s.startsWith('ko'))return'ko';if(s.startsWith('en'))return'en';return'ru';}
+
+function detectLang(){
+  var s=navigator.language||navigator.userLanguage||'ru';
+  if(s.startsWith('ko'))return'ko';
+  if(s.startsWith('en'))return'en';
+  return'ru';
+}
 function resolveLang(l){return l==='auto'?detectLang():(I18N[l]?l:'ru');}
 function applyLang(l){
-  l=resolveLang(l); localStorage.setItem('avalone_lang', l);
-  document.documentElement.lang=l;
+  l=resolveLang(l);localStorage.setItem('avalone_lang',l);document.documentElement.lang=l;
   var t=I18N[l];
   document.querySelectorAll('[data-i]').forEach(function(el){var k=el.dataset.i;if(t[k])el.textContent=t[k];});
+  document.querySelectorAll('[data-i-placeholder]').forEach(function(el){var k=el.dataset.iPlaceholder;if(t[k])el.placeholder=t[k];});
 }
 function setLang(l){applyLang(l);}
+
+function toggleTheme(){
+  var root=document.documentElement;
+  var current=root.dataset.theme;
+  var next=current==='light'?'dark':(current==='dark'?'light':(window.matchMedia('(prefers-color-scheme: light)').matches?'dark':'light'));
+  root.dataset.theme=next;localStorage.setItem('avalone_theme',next);
+}
+function initTheme(){
+  try{var t=localStorage.getItem('avalone_theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;}catch(e){}
+}
+
+function showComingSoon(name){
+  var l=resolveLang(localStorage.getItem('avalone_lang')||'auto');
+  alert(I18N[l].coming_soon + name);
+  return false;
+}
+function showSearch(){
+  var q=prompt('Поиск по Avalone (скоро)');
+  if(q)alert('Вы искали: '+q);
+}
+function submitWaitlist(e){
+  e.preventDefault();
+  var input=e.target.querySelector('input');
+  if(input.value.trim()){
+    alert('Спасибо! Мы запомнили: '+input.value);
+    input.value='';
+  }
+  return false;
+}
+
 (function(){
+  initTheme();
   var stored=localStorage.getItem('avalone_lang')||'auto';
   document.getElementById('lang').value=stored;
   applyLang(stored);

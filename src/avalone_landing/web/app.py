@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 
-from avalone_landing.config import APPS, settings
+from avalone_landing.config import APPS, BRANCHES, settings
 
 app = FastAPI(title="avalone.online")
 BASE = Path(__file__).parent
@@ -45,7 +45,7 @@ async def landing(request: Request):
         templates.TemplateResponse(
             request,
             "landing.html",
-            {"apps": APPS, "build_id": BUILD_ID},
+            {"apps": APPS, "branches": BRANCHES, "build_id": BUILD_ID},
         )
     )
 
@@ -53,12 +53,13 @@ async def landing(request: Request):
 @app.get("/manifest.json")
 async def manifest():
     return {
-        "name": "avalone.online",
-        "short_name": "avalone",
+        "name": "Avalone",
+        "short_name": "Avalone",
+        "description": "Цифровая вселенная поверх реального мира.",
         "start_url": "/",
         "display": "standalone",
-        "background_color": "#0f1115",
-        "theme_color": "#0f1115",
+        "background_color": "#0a0c10",
+        "theme_color": "#0a0c10",
         "icons": [{"src": "/icon.svg", "sizes": "any", "type": "image/svg+xml"}],
     }
 
