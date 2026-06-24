@@ -1,0 +1,43 @@
+# AGENTS.md — проект avalone.online
+
+> Project-specific instructions для метавселенной Avalone.
+> Глобальные предпочтения оператора: `~/AGENTS.md`
+> Канонический контекст: `~/github-work/denis-root-continuity/skills/`
+
+## Project header
+
+- **Selected template:** `software-project-rules` + `project-rules`
+- **Named source basis:** RUP, ISO/IEC/IEEE 12207, 29148, 14764, IEEE 828, Google eng-practices, ToIP stack
+- **Tailoring notes:** проект находится в фазе зарождения идеи. На текущем этапе приоритет — исследование и документирование, а не сужение до MVP. Реализация начинается только после явного одобрения оператора.
+- **Current phase:** Inception / concept + Domain research
+- **Current gate status:** концепция сформулирована, сущности выделены, исследования по миру задокументированы
+- **Next exact slice:** детальная проработка сценария арбайт + развозка + самущиль
+
+## Read order для проекта
+
+1. `README.md` — обзор проекта и структура документации.
+2. `docs/avalone-meta.md` — текущее состояние метавселенной.
+3. `docs/research.md` — результаты исследований.
+4. `~/github-work/denis-root-continuity/skills/project-avalone.md` — контекст домена avalone.online.
+5. `~/github-work/denis-root-continuity/skills/software-project-rules.md` — методология.
+6. `~/github-work/denis-root-continuity/skills/project-rules.md` — кросс-доменные правила.
+
+## Принципы проекта
+
+1. **Не сужать до MVP без одобрения.** Оператор явно сказал, что сейчас режим планирования и проработки идеи, а не выбора MVP.
+2. **Не терять видение метавселенной.** Любое техническое решение должно расширять ядро, а не создавать отдельный остров.
+3. **Любая новая идея — через призму сущностей:** Человек → Организация → Место → Событие → Возможность → Навык → Документ → Транспорт → Сообщество → Репутация.
+4. **Source citation обязательна** для process guidance, методологий, паттернов.
+5. **Документировать перед кодом.** Пока нет durable project state в виде документов, код не пишется.
+
+## Чувствительные темы
+
+- Проект связан с доходом оператора и его мечтой о независимости от локации.
+- Не обесценивать масштаб идеи, но и не обещать лёгкого успеха.
+- Бюджет и личные финансы оператора — отдельно, см. `~/github-work/denis-root-continuity/skills/family-budget/SKILL.md`.
+
+## Безопасность
+
+- Секреты проекта хранить в `~/infrastructure-secrets.env` или project-specific `.env` (в `.gitignore`).
+- Не коммитить API-ключи, пароли, токены.
+- Репозиторий публичный — не публиковать персональные данные оператора или третьих лиц.
