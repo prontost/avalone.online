@@ -202,12 +202,12 @@ footer{margin-top:40px;text-align:center;color:var(--muted);font-size:12px}
       </div>
     </header>
 
-    <div class="status-card dev" id="statusCard">
-      <div class="status-title"><span class="status-dot dev"></span><span data-i="status_title">В разработке</span></div>
-      <p class="status-text" data-i="status_text">Первая ветка — Работа. Скоро здесь будут поездки, смены и координация.</p>
+    <div class="status-card active" id="statusCard">
+      <div class="status-title"><span class="status-dot active"></span><span data-i="status_title">Работает</span></div>
+      <p class="status-text" data-i="status_text">Первая ветка — Работа. Уже можно создавать поездки и приглашать коллег.</p>
       <div class="status-actions">
         <a class="pill-btn" href="https://counta.avalone.online" target="_blank" rel="noopener" data-i="status_btn1">🪙 Открыть Counta ↗</a>
-        <a class="pill-btn" href="#" onclick="showComingSoon('Работа');return false" data-i="status_btn2">🛠️ Узнать о Работе</a>
+        <a class="pill-btn" href="https://routa.avalone.online" target="_blank" rel="noopener" data-i="status_btn2">🛠️ Открыть Work ↗</a>
       </div>
     </div>
 
@@ -377,8 +377,8 @@ function installPWA(){
 const I18N = {
   ru:{
     brand:'Avalone',tagline:'Цифровая вселенная',
-    status_title:'В разработке',status_text:'Первая ветка — Работа. Скоро здесь будут поездки, смены и координация.',
-    status_btn1:'🪙 Открыть Counta',status_btn2:'🛠️ Узнать о Работе',
+    status_title:'Работает',status_text:'Первая ветка — Работа. Уже можно создавать поездки и приглашать коллег.',
+    status_btn1:'🪙 Открыть Counta',status_btn2:'🛠️ Открыть Work',
     quick_title:'Быстрые действия',quick_1:'🪙 Бюджет',quick_2:'🛠️ Работа',quick_3:'👤 Профиль',quick_4:'🌐 Сообщества',
     branches_title:'Вселенная Avalone',
     teaser_title:'Новые ветки уже в разработке',teaser_text:'Оставьте способ связи, и мы сообщим, когда запустится нужная вам ветка.',
@@ -389,8 +389,8 @@ const I18N = {
   },
   en:{
     brand:'Avalone',tagline:'Digital universe',
-    status_title:'In development',status_text:'The first branch — Work. Rides, shifts and coordination coming soon.',
-    status_btn1:'🪙 Open Counta',status_btn2:'🛠️ About Work',
+    status_title:'Live',status_text:'The first branch — Work. You can already create rides and invite coworkers.',
+    status_btn1:'🪙 Open Counta',status_btn2:'🛠️ Open Work',
     quick_title:'Quick actions',quick_1:'🪙 Budget',quick_2:'🛠️ Work',quick_3:'👤 Profile',quick_4:'🌐 Community',
     branches_title:'Avalone Universe',
     teaser_title:'New branches are in development',teaser_text:'Leave your contact and we will notify you when your branch launches.',
@@ -401,8 +401,8 @@ const I18N = {
   },
   ko:{
     brand:'Avalone',tagline:'디지털 우주',
-    status_title:'개발 중',status_text:'첫 번째 브랜치 — 일. 곧 출퇴근, 교대 및 조정이 가능합니다.',
-    status_btn1:'🪙 Counta 열기',status_btn2:'🛠️ 일 알아보기',
+    status_title:'실행 중',status_text:'첫 번째 브랜치 — 일. 이미 출퇴근을 만들고 동료를 초대할 수 있습니다.',
+    status_btn1:'🪙 Counta 열기',status_btn2:'🛠️ Work 열기',
     quick_title:'빠른 작업',quick_1:'🪙 예산',quick_2:'🛠️ 일',quick_3:'👤 프로필',quick_4:'🌐 커뮤니티',
     branches_title:'Avalone 우주',
     teaser_title:'새로운 브랜치가 개발 중입니다',teaser_text:'연락처를 남기시면 해당 브랜치가 출시되면 알려드립니다.',
