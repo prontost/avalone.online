@@ -69,12 +69,13 @@ input:focus{border-color:var(--accent)}
     <div class="logo-mark">◈</div>
     <div>
       <div class="brand-title">Avalone</div>
-      <div class="brand-sub">Цифровая вселенная</div>
+      <div class="brand-sub">Ваши инструменты в одном месте</div>
     </div>
   </div>
   <h1>Вход</h1>
   {% if error %}<div class="error">{{ error }}</div>{% endif %}
   <form method="post" action="/login">
+    <input type="hidden" name="next" value="{{ request.query_params.get('next', '') }}">
     <div class="field">
       <label for="login">Логин</label>
       <input id="login" name="login" type="text" required autocomplete="username" autofocus>

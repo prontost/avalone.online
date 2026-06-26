@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark light">
 <meta name="theme-color" content="#0a0c10">
-<meta name="description" content="Avalone — цифровая вселенная поверх реального мира.">
+<meta name="description" content="{{ t('brand_tagline') }}">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<title>Avalone</title>
+<title>{{ t('brand') }}</title>
+<link rel="stylesheet" href="/static/avalone-shell.css?v=6">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="icon" type="image/png" href="/icon-192.png">
@@ -59,15 +60,16 @@
   --shadow:0 8px 32px rgba(0,0,0,.35);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen,Ubuntu,sans-serif;min-height:100vh;overflow-x:hidden}
+html,body{height:100%;max-width:100vw;overflow-x:hidden}
+body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen,Ubuntu,sans-serif;min-height:100vh}
 body::before{
   content:'';position:fixed;inset:0;z-index:-1;
   background:radial-gradient(circle at 20% 10%, rgba(124,92,255,.12), transparent 40%),
              radial-gradient(circle at 80% 90%, rgba(124,92,255,.08), transparent 35%);
   pointer-events:none;
 }
-.wrap{max-width:720px;margin:0 auto;padding:24px 16px 110px}
+.wrap{max-width:720px;margin:0 auto;padding:24px 16px 110px;min-width:0}
+.landing-wrap{padding-top:calc(var(--header-h) + 16px)}
 
 /* Header */
 .portal-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:10px}
@@ -115,7 +117,7 @@ body::before{
 .branch:active{transform:scale(.98)}
 .branch.active{border-color:rgba(124,92,255,.4);background:linear-gradient(180deg,var(--card),var(--card-2))}
 .branch.dev{border-color:rgba(217,153,34,.35);background:linear-gradient(180deg,var(--card),rgba(217,153,34,.05))}
-.branch.coming{opacity:.72}
+.branch.planned{opacity:.85}
 .branch-icon{font-size:32px;line-height:1}
 .branch-name{font-size:15px;font-weight:700}
 .branch-desc{font-size:12px;color:var(--muted);line-height:1.35;flex:1}
@@ -130,8 +132,7 @@ body::before{
 .branch-action:hover{border-color:var(--accent)}
 
 /* Quick actions */
-.quick-actions{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
-.quick-actions::-webkit-scrollbar{display:none}
+.quick-actions{display:flex;flex-wrap:wrap;gap:10px;padding-bottom:6px}
 .quick-action{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:14px;background:var(--card);border:1px solid var(--line);color:var(--txt);font-size:14px;font-weight:500;text-decoration:none;transition:border-color .15s}
 .quick-action:hover{border-color:var(--accent);background:var(--card-2)}
 
@@ -165,92 +166,75 @@ footer{margin-top:40px;text-align:center;color:var(--muted);font-size:12px}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <header class="portal-header">
+{% from 'shell.html' import avalone_shell %}
+{% set branch_list = registry.for_shell('ru') %}
+{% call avalone_shell(
+    current_app='portal',
+    user=user,
+    branches=branch_list,
+    app_nav=[]
+) %}
+  <div class="wrap landing-wrap">
+    <div class="portal-header">
       <div class="brand">
         <div class="logo-mark">◈</div>
-        <div>
+        <div class="min-w-0">
           <div class="brand-title" data-i="brand">Avalone</div>
-          <div class="brand-sub" data-i="tagline">Цифровая вселенная</div>
+          <div class="brand-sub" data-i="brand_tagline">{{ t('brand_tagline') }}</div>
         </div>
       </div>
       <div class="header-actions">
-        <button class="icon-btn" id="installBtn" onclick="installPWA()" title="Установить приложение" aria-label="Установить">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-        </button>
-        <select class="lang-select" id="lang" onchange="setLang(this.value)" title="Язык">
-          <option value="auto">🌐</option>
-          <option value="ru">RU</option>
-          <option value="en">EN</option>
-          <option value="ko">KO</option>
+        <select class="lang-select" id="langSelect" aria-label="Язык">
+          <option value="auto">Auto</option>
+          <option value="ru">Русский</option>
+          <option value="en">English</option>
+          <option value="ko">한국어</option>
         </select>
-        <button class="icon-btn" onclick="toggleTheme()" title="Тема" aria-label="Тема">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-        </button>
-        <button class="icon-btn" onclick="showSearch()" title="Поиск" aria-label="Поиск">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-        </button>
-        {% if user %}
-        <a class="icon-btn" href="/logout" title="Выйти ({{ user.login }})" aria-label="Выйти">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-        </a>
-        {% else %}
-        <a class="icon-btn" href="/login" title="Войти" aria-label="Войти">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        </a>
-        {% endif %}
       </div>
-    </header>
+    </div>
 
     <div class="status-card active" id="statusCard">
-      <div class="status-title"><span class="status-dot active"></span><span data-i="status_title">Работает</span></div>
-      <p class="status-text" data-i="status_text">Первая ветка — Работа. Уже можно создавать поездки и приглашать коллег.</p>
+      <div class="status-title"><span class="status-dot active"></span><span data-i="status_title">{{ t('status_title') }}</span></div>
+      <p class="status-text" data-i="status_text">{{ t('status_text') }}</p>
       <div class="status-actions">
-        <a class="pill-btn" href="https://counta.avalone.online" target="_blank" rel="noopener" data-i="status_btn1">🪙 Открыть Counta ↗</a>
-        <a class="pill-btn" href="https://routa.avalone.online" target="_blank" rel="noopener" data-i="status_btn2">🛠️ Открыть Work ↗</a>
+        <a class="pill-btn" href="https://counta.avalone.online" target="_blank" rel="noopener" data-i="btn_open_money">{{ t('btn_open_money') }}</a>
+        <a class="pill-btn" href="https://work.avalone.online" target="_blank" rel="noopener" data-i="btn_open_work">{{ t('btn_open_work') }}</a>
       </div>
     </div>
 
-    <div class="section-title" data-i="quick_title">Быстрые действия</div>
+    <div class="section-title" data-i="quick_title">{{ t('quick_title') }}</div>
     <div class="quick-actions">
-      <a class="quick-action" href="https://counta.avalone.online" target="_blank" rel="noopener" data-i="quick_1">🪙 Бюджет ↗</a>
-      <a class="quick-action" href="#" onclick="showComingSoon('Работа');return false" data-i="quick_2">🛠️ Работа</a>
-      <a class="quick-action" href="#" onclick="showComingSoon('Профиль');return false" data-i="quick_3">👤 Профиль</a>
-      <a class="quick-action" href="#" onclick="showComingSoon('Сообщества');return false" data-i="quick_4">🌐 Сообщества</a>
+      <a class="quick-action" href="https://counta.avalone.online" target="_blank" rel="noopener" data-i="quick_budget">{{ glossary.app_money.ru }}</a>
+      <a class="quick-action" href="https://work.avalone.online" target="_blank" rel="noopener" data-i="quick_work">{{ glossary.app_work.ru }}</a>
+      <a class="quick-action" href="https://avalone.online/profile" data-i="quick_profile">{{ t('quick_profile') }}</a>
+      <a class="quick-action" href="#" onclick="showComingSoon('{{ glossary.app_education.ru }}');return false" data-i="quick_community">{{ t('quick_community') }}</a>
     </div>
 
-    <div class="section-title" data-i="branches_title">Вселенная Avalone</div>
+    <div class="section-title" data-i="apps_title">{{ t('apps_title') }}</div>
     <main class="bento" id="branches">
-      {% for branch in branches %}
-      <a class="branch {{ 'active' if branch.status == 'active' else ('dev' if branch.status == 'in_dev' else 'coming') }}" href="{{ branch.url or '#' }}" {% if branch.status != 'active' %}onclick="return showComingSoon('{{ branch.name }}')"{% endif %}>
+      {% for branch in branch_list %}
+      <a class="branch {{ 'active' if branch.status == 'active' else ('dev' if branch.status == 'in_dev' else 'planned') }}" href="{{ branch.url or '#' }}" {% if branch.status != 'active' %}onclick="return showComingSoon('{{ branch.name }}')"{% endif %}>
         <span class="branch-badge {{ 'active' if branch.status == 'active' else ('dev' if branch.status == 'in_dev' else '') }}">
-          {{ 'Работает' if branch.status == 'active' else ('В разработке' if branch.status == 'in_dev' else 'Скоро') }}
+          {{ t('status_active') if branch.status == 'active' else (t('status_in_dev') if branch.status == 'in_dev' else t('status_planned')) }}
         </span>
         <div class="branch-icon">{{ branch.icon }}</div>
         <div class="branch-name">{{ branch.name }}</div>
         <div class="branch-desc">{{ branch.description }}</div>
-        {% if branch.actions %}
-        <div class="branch-actions">
-          {% for action in branch.actions %}
-          <span class="branch-action" onclick="event.stopPropagation();event.preventDefault();window.open('{{ action.url }}','_blank','noopener,noreferrer')">{{ action.label }} ↗</span>
-          {% endfor %}
-        </div>
-        {% endif %}
       </a>
       {% endfor %}
     </main>
 
     <div class="teaser-panel">
-      <div class="teaser-title" data-i="teaser_title">Новые ветки уже в разработке</div>
-      <p class="teaser-text" data-i="teaser_text">Оставьте способ связи, и мы сообщим, когда запустится нужная вам ветка.</p>
+      <div class="teaser-title" data-i="teaser_title">{{ t('teaser_title') }}</div>
+      <p class="teaser-text" data-i="teaser_text">{{ t('teaser_text') }}</p>
       <form class="teaser-form" onsubmit="return submitWaitlist(event)">
-        <input class="teaser-input" type="text" placeholder="Telegram / KakaoTalk / email" data-i-placeholder="teaser_placeholder">
-        <button class="teaser-btn" type="submit" data-i="teaser_btn">Сообщить</button>
+        <input class="teaser-input" type="text" placeholder="{{ t('teaser_placeholder') }}" data-i-placeholder="teaser_placeholder">
+        <button class="teaser-btn" type="submit" data-i="teaser_btn">{{ t('teaser_btn') }}</button>
       </form>
     </div>
 
     <footer>
-      <span data-i="footer">© Avalone — цифровая вселенная поверх реального мира</span>
+      <span data-i="footer">{{ t('footer') }}</span>
     </footer>
   </div>
 
@@ -258,19 +242,19 @@ footer{margin-top:40px;text-align:center;color:var(--muted);font-size:12px}
     <div class="bottom-nav-inner">
       <a class="bottom-item active" href="/">
         <span class="bottom-icon">◈</span>
-        <span data-i="nav_home">Портал</span>
+        <span data-i="nav_home">{{ t('nav_home') }}</span>
       </a>
       <a class="bottom-item" href="https://counta.avalone.online" target="_blank" rel="noopener">
         <span class="bottom-icon">🪙</span>
-        <span data-i="nav_work">Финансы ↗</span>
+        <span data-i="nav_money">{{ t('nav_money') }}</span>
       </a>
-      <a class="bottom-item" href="#" onclick="showComingSoon('Сообщества');return false">
+      <a class="bottom-item" href="#" onclick="showComingSoon('{{ glossary.app_education.ru }}');return false">
         <span class="bottom-icon">💬</span>
-        <span data-i="nav_chat">Чат</span>
+        <span data-i="nav_chat">{{ t('nav_chat') }}</span>
       </a>
-      <a class="bottom-item" href="#" onclick="showComingSoon('Профиль');return false">
+      <a class="bottom-item" href="https://avalone.online/profile">
         <span class="bottom-icon">👤</span>
-        <span data-i="nav_profile">Профиль</span>
+        <span data-i="nav_profile">{{ t('nav_profile') }}</span>
       </a>
     </div>
   </nav>
@@ -304,7 +288,6 @@ if('serviceWorker' in navigator){
         if(!newWorker) return;
         newWorker.addEventListener('statechange', function(){
           if(newWorker.state === 'installed' && navigator.serviceWorker.controller){
-            // New version available — activate it immediately.
             newWorker.postMessage({action:'skipWaiting'});
             window.location.reload();
           }
@@ -360,7 +343,6 @@ function installPWA(){
     });
     return;
   }
-  // No deferred prompt available (e.g. already dismissed or not supported).
   if(isAndroid()){
     alert('Чтобы установить, нажмите «⋮» в Chrome и выберите «Добавить на главный экран».');
   }else{
@@ -370,48 +352,11 @@ function installPWA(){
 
 (function initInstallButton(){
   updateInstallButton();
-  // Re-check if display mode changes.
   window.matchMedia('(display-mode: standalone)').addEventListener('change', updateInstallButton);
 })();
 
-const I18N = {
-  ru:{
-    brand:'Avalone',tagline:'Цифровая вселенная',
-    status_title:'Работает',status_text:'Первая ветка — Работа. Уже можно создавать поездки и приглашать коллег.',
-    status_btn1:'🪙 Открыть Counta',status_btn2:'🛠️ Открыть Work',
-    quick_title:'Быстрые действия',quick_1:'🪙 Бюджет',quick_2:'🛠️ Работа',quick_3:'👤 Профиль',quick_4:'🌐 Сообщества',
-    branches_title:'Вселенная Avalone',
-    teaser_title:'Новые ветки уже в разработке',teaser_text:'Оставьте способ связи, и мы сообщим, когда запустится нужная вам ветка.',
-    teaser_placeholder:'Telegram / KakaoTalk / email',teaser_btn:'Сообщить',
-    footer:'© Avalone — цифровая вселенная поверх реального мира',
-    nav_home:'Портал',nav_work:'Финансы',nav_chat:'Чат',nav_profile:'Профиль',
-    coming_soon:'Скоро запустим: '
-  },
-  en:{
-    brand:'Avalone',tagline:'Digital universe',
-    status_title:'Live',status_text:'The first branch — Work. You can already create rides and invite coworkers.',
-    status_btn1:'🪙 Open Counta',status_btn2:'🛠️ Open Work',
-    quick_title:'Quick actions',quick_1:'🪙 Budget',quick_2:'🛠️ Work',quick_3:'👤 Profile',quick_4:'🌐 Community',
-    branches_title:'Avalone Universe',
-    teaser_title:'New branches are in development',teaser_text:'Leave your contact and we will notify you when your branch launches.',
-    teaser_placeholder:'Telegram / KakaoTalk / email',teaser_btn:'Notify me',
-    footer:'© Avalone — a digital universe on top of the real world',
-    nav_home:'Portal',nav_work:'Finance',nav_chat:'Chat',nav_profile:'Profile',
-    coming_soon:'Coming soon: '
-  },
-  ko:{
-    brand:'Avalone',tagline:'디지털 우주',
-    status_title:'실행 중',status_text:'첫 번째 브랜치 — 일. 이미 출퇴근을 만들고 동료를 초대할 수 있습니다.',
-    status_btn1:'🪙 Counta 열기',status_btn2:'🛠️ Work 열기',
-    quick_title:'빠른 작업',quick_1:'🪙 예산',quick_2:'🛠️ 일',quick_3:'👤 프로필',quick_4:'🌐 커뮤니티',
-    branches_title:'Avalone 우주',
-    teaser_title:'새로운 브랜치가 개발 중입니다',teaser_text:'연락처를 남기시면 해당 브랜치가 출시되면 알려드립니다.',
-    teaser_placeholder:'Telegram / KakaoTalk / email',teaser_btn:'알림 받기',
-    footer:'© Avalone — 현실 세계 위의 디지털 우주',
-    nav_home:'포털',nav_work:'재정',nav_chat:'채팅',nav_profile:'프로필',
-    coming_soon:'곧 출시: '
-  }
-};
+const I18N = {{ i18n_js() | tojson }};
+const GLOSSARY = I18N;
 
 function detectLang(){
   var s=navigator.language||navigator.userLanguage||'ru';
@@ -426,25 +371,13 @@ function applyLang(l){
   document.querySelectorAll('[data-i]').forEach(function(el){var k=el.dataset.i;if(t[k])el.textContent=t[k];});
   document.querySelectorAll('[data-i-placeholder]').forEach(function(el){var k=el.dataset.iPlaceholder;if(t[k])el.placeholder=t[k];});
 }
-function setLang(l){applyLang(l);}
-
-function toggleTheme(){
-  var root=document.documentElement;
-  var current=root.dataset.theme;
-  var next=current==='light'?'dark':(current==='dark'?'light':(window.matchMedia('(prefers-color-scheme: light)').matches?'dark':'light'));
-  root.dataset.theme=next;localStorage.setItem('avalone_theme',next);
-}
-function initTheme(){
-  try{var t=localStorage.getItem('avalone_theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;}catch(e){}
-}
-
 function showComingSoon(name){
   var l=resolveLang(localStorage.getItem('avalone_lang')||'auto');
   alert(I18N[l].coming_soon + name);
   return false;
 }
 function showSearch(){
-  var q=prompt('Поиск по Avalone (скоро)');
+  var q=prompt(I18N[resolveLang(localStorage.getItem('avalone_lang')||'auto')].search_placeholder || 'Поиск...');
   if(q)alert('Вы искали: '+q);
 }
 function submitWaitlist(e){
@@ -458,11 +391,13 @@ function submitWaitlist(e){
 }
 
 (function(){
-  initTheme();
   var stored=localStorage.getItem('avalone_lang')||'auto';
-  document.getElementById('lang').value=stored;
   applyLang(stored);
+  var sel=document.getElementById('langSelect');
+  if(sel){sel.value=stored;sel.addEventListener('change',function(){applyLang(sel.value);});}
 })();
 </script>
+<script src="/static/avalone-shell.js?v=2" defer></script>
+{% endcall %}
 </body>
 </html>

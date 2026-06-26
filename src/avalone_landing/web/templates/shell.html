@@ -1,0 +1,115 @@
+{# Avalone shared shell macro #}
+{% macro avalone_shell(current_app='portal', user=None, branches=[], app_nav=[], breadcrumbs=[], notifications_count=0) %}
+{% set active_branch = branches | selectattr('id', 'eq', current_app) | first %}
+{% if not active_branch %}
+  {% set active_branch = {'id':'portal','name':'Avalone','icon':'◈','url':'https://avalone.online'} %}
+{% endif %}
+
+<div class="avalone-shell {% if not app_nav %}no-sidebar{% endif %}">
+  <header class="avalone-header">
+    <a class="avalone-logo" href="https://avalone.online/" title="Avalone">
+      <div class="avalone-logo-mark">◈</div>
+      <span>Avalone</span>
+    </a>
+
+    <div class="avalone-app-switcher">
+      <button class="avalone-app-switcher__btn" aria-haspopup="true" aria-expanded="false">
+        <span>{{ active_branch.icon or '◈' }}</span>
+        <span>{{ active_branch.name or 'Avalone' }}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="avalone-app-switcher__menu">
+        {% for b in branches %}
+        {% if b.status == 'active' %}
+        <a class="avalone-app-switcher__item {% if b.id == current_app %}active{% endif %}" href="{{ b.url }}">
+          <span>{{ b.icon or '◈' }}</span>
+          <span>{{ b.name }}</span>
+        </a>
+        {% else %}
+        {% set planned_label = 'В разработке' if b.status == 'in_dev' else 'В планах' %}
+        <span class="avalone-app-switcher__item coming" title="{{ b.name }} — {{ planned_label }}">
+          <span>{{ b.icon or '◈' }}</span>
+          <span>{{ b.name }} ({{ planned_label }})</span>
+        </span>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="avalone-search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input type="text" placeholder="Поиск..." onclick="openGlobalSearch()" readonly style="padding-left:40px">
+    </div>
+
+    <div class="avalone-header__actions">
+      <button class="avalone-icon-btn" onclick="toggleTheme()" title="Тема" aria-label="Тема">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </button>
+
+      <button class="avalone-icon-btn avalone-notifications" onclick="openNotifications()" title="Уведомления" aria-label="Уведомления">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="avalone-notifications__count" style="display:none"></span>
+      </button>
+
+      <div class="avalone-profile">
+        <div class="avalone-profile__avatar" title="{{ user.login if user else 'Гость' }}">
+          {{ (user.login or 'G')[0].upper() if user else 'G' }}
+        </div>
+        <div class="avalone-profile__menu" style="display:none;position:absolute;right:0;top:calc(100%+8px);min-width:160px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow);padding:8px 0;z-index:200">
+          {% if user %}
+          <a href="https://avalone.online/profile" class="avalone-nav__item">Профиль</a>
+          <a href="https://avalone.online/logout" class="avalone-nav__item">Выйти</a>
+          {% else %}
+          <a href="https://avalone.online/login" class="avalone-nav__item">Войти</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </header>
+
+  {% if app_nav %}
+  <aside class="avalone-sidebar">
+    {% for section in app_nav %}
+    <div class="avalone-nav__section">
+      {% if section.label %}<div class="avalone-nav__label">{{ section.label }}</div>{% endif %}
+      {% for item in section.entries %}
+      <a class="avalone-nav__item {% if item.active %}active{% endif %}" href="{{ item.url }}">
+        <span>{{ item.icon or '•' }}</span>
+        <span>{{ item.label }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </aside>
+  {% endif %}
+
+  <main class="avalone-main">
+    {% if breadcrumbs %}
+    <nav class="avalone-breadcrumbs">
+      <a href="https://avalone.online/">Avalone</a>
+      {% for crumb in breadcrumbs %}
+      <span>/</span>
+      {% if crumb.url %}<a href="{{ crumb.url }}">{{ crumb.name }}</a>{% else %}<span>{{ crumb.name }}</span>{% endif %}
+      {% endfor %}
+    </nav>
+    {% endif %}
+
+    {{ caller() }}
+  </main>
+</div>
+
+{% if app_nav %}
+<nav class="avalone-bottom-nav">
+  {% for section in app_nav %}
+  {% for item in section.entries %}
+  <a class="avalone-bottom-nav__item {% if item.active %}active{% endif %}" href="{{ item.url }}">
+    <span>{{ item.icon or '•' }}</span>
+    <span>{{ item.label }}</span>
+  </a>
+  {% endfor %}
+  {% endfor %}
+</nav>
+{% endif %}
+
+<script src="/static/avalone-shell.js?v=2" defer></script>
+{% endmacro %}

@@ -33,10 +33,16 @@ wheels = [
 ]
 
 [[package]]
+name = "avalone-core"
+version = "0.1.0"
+source = { directory = "/Users/lucifer/github-work/avalone.online/src/avalone_core" }
+
+[[package]]
 name = "avalone-landing"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "avalone-core" },
     { name = "fastapi" },
     { name = "itsdangerous" },
     { name = "jinja2" },
@@ -58,6 +64,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "avalone-core", directory = "/Users/lucifer/github-work/avalone.online/src/avalone_core" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "itsdangerous", specifier = ">=2.2" },
     { name = "jinja2", specifier = ">=3.1" },

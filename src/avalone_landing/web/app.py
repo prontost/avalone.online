@@ -5,18 +5,28 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from avalone_landing.config import APPS, BRANCHES, settings
+from avalone_core import glossary
+from avalone_core.db import migrate as migrate_db
+from avalone_core.registry import AvaloneRegistry
+from avalone_landing.config import settings
 from avalone_landing.core import users
 from avalone_landing.web.auth import SESSION_COOKIE, _signer, router as auth_router
 
+migrate_db()
 app = FastAPI(title="avalone.online")
 app.include_router(auth_router)
 BASE = Path(__file__).parent
 _templates_dir = BASE / "templates"
 _static_dir = BASE / "static"
 templates = Jinja2Templates(directory=str(_templates_dir))
+templates.env.globals["glossary"] = glossary.GLOSSARY
+templates.env.globals["t"] = glossary.t
+templates.env.globals["i18n_js"] = glossary.i18n_js
+templates.env.globals["registry"] = AvaloneRegistry
+app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
 
 @app.middleware("http")
@@ -62,7 +72,7 @@ async def landing(request: Request):
         templates.TemplateResponse(
             request,
             "landing.html",
-            {"apps": APPS, "branches": BRANCHES, "build_id": BUILD_ID, "user": user},
+            {"build_id": BUILD_ID, "user": user},
         )
     )
 
@@ -72,7 +82,7 @@ async def manifest():
     return {
         "name": "Avalone",
         "short_name": "Avalone",
-        "description": "Цифровая вселенная поверх реального мира.",
+        "description": "Ваши инструменты в одном месте.",
         "start_url": "/?source=pwa",
         "display": "standalone",
         "orientation": "portrait",

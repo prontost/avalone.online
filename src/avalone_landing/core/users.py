@@ -1,6 +1,6 @@
 """Avalone users and password auth.
 
-Lightweight version of Counta's tenant module. Passwords are PBKDF2-HMAC-SHA256
+Uses the unified Avalone DB (avalone_core.db). Passwords are PBKDF2-HMAC-SHA256
 (stdlib only). The session itself is a signed cookie handled by the web layer.
 """
 
@@ -11,26 +11,13 @@ import sqlite3
 from contextvars import ContextVar
 from datetime import datetime, timezone
 
-from avalone_landing.core.db import DB_PATH
+from avalone_core.db import connection
 
 _current: ContextVar[int] = ContextVar("user_id", default=0)
 
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS users (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    login      TEXT UNIQUE NOT NULL,
-    pwhash     TEXT NOT NULL,
-    email      TEXT DEFAULT '',
-    created_at TEXT NOT NULL
-);
-"""
-
 
 def _conn() -> sqlite3.Connection:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(DB_PATH)
-    con.executescript(_SCHEMA)
-    return con
+    return connection()
 
 
 def set_current(user_id: int) -> None:
@@ -110,3 +97,17 @@ def authenticate(login: str, password: str) -> int | None:
 
 def login_taken(login: str) -> bool:
     return get_by_login(login) is not None
+
+
+def change_password(user_id: int, current_password: str, new_password: str) -> bool:
+    """Return True on success, False if current password is wrong."""
+    if len(new_password) < 6:
+        raise ValueError("password too short")
+    with _conn() as con:
+        r = con.execute("SELECT pwhash FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not r:
+            return False
+        if not verify_password(current_password, r[0]):
+            return False
+        con.execute("UPDATE users SET pwhash = ? WHERE id = ?", (hash_password(new_password), user_id))
+    return True

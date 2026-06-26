@@ -5,12 +5,18 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.templating import Jinja2Templates
 from itsdangerous import URLSafeSerializer
 
+from avalone_core import glossary
+from avalone_core.registry import AvaloneRegistry
 from avalone_landing.config import settings
 from avalone_landing.core import users
 
 router = APIRouter()
 BASE = __file__.rsplit("/", 1)[0]
 templates = Jinja2Templates(directory=f"{BASE}/templates")
+templates.env.globals["glossary"] = glossary.GLOSSARY
+templates.env.globals["t"] = glossary.t
+templates.env.globals["i18n_js"] = glossary.i18n_js
+templates.env.globals["registry"] = AvaloneRegistry
 
 _signer = URLSafeSerializer(settings().fernet_key, salt="avalone-session")
 SESSION_COOKIE = "avalone_session"
@@ -76,7 +82,10 @@ async def login(request: Request):
     pw = str(form.get("password", ""))
     user_id = users.authenticate(login_field, pw)
     if user_id:
-        resp = RedirectResponse("/", status_code=303)
+        next_url = str(form.get("next", "")).strip()
+        if not next_url or not next_url.startswith(("http://", "https://", "/")):
+            next_url = "/"
+        resp = RedirectResponse(next_url, status_code=303)
         _issue_session(request, resp, user_id)
         return resp
     return templates.TemplateResponse(
@@ -161,3 +170,43 @@ async def auth_refresh(request: Request):
     resp = JSONResponse({"ok": True, "user": {"id": u["id"], "login": u["login"]}})
     _issue_session(request, resp, user_id)
     return resp
+
+
+@router.get("/profile", response_class=HTMLResponse)
+async def profile_page(request: Request):
+    user_id = _user_id_of(request)
+    if not user_id:
+        return RedirectResponse("/login?next=/profile", status_code=303)
+    u = users.get_user(user_id)
+    if not u:
+        return RedirectResponse("/login", status_code=303)
+    return templates.TemplateResponse(request, "profile.html", {"user": u})
+
+
+@router.post("/profile/password")
+async def change_password(request: Request):
+    user_id = _user_id_of(request)
+    if not user_id:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    form = await request.form()
+    current = str(form.get("current_password", ""))
+    new_pw = str(form.get("new_password", ""))
+    new_pw2 = str(form.get("new_password2", ""))
+
+    if new_pw != new_pw2:
+        return templates.TemplateResponse(
+            request, "profile.html", {"user": users.get_user(user_id), "error": "Новые пароли не совпадают"}, status_code=400
+        )
+    try:
+        ok = users.change_password(user_id, current, new_pw)
+    except ValueError as e:
+        return templates.TemplateResponse(
+            request, "profile.html", {"user": users.get_user(user_id), "error": str(e)}, status_code=400
+        )
+    if not ok:
+        return templates.TemplateResponse(
+            request, "profile.html", {"user": users.get_user(user_id), "error": "Текущий пароль неверный"}, status_code=400
+        )
+    return templates.TemplateResponse(
+        request, "profile.html", {"user": users.get_user(user_id), "success": "Пароль изменён"}
+    )
