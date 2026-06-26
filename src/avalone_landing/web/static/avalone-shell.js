@@ -78,12 +78,22 @@
     if (window.applyLang) window.applyLang(lang);
   };
 
-  // Search
+  // Search overlay
   window.openGlobalSearch = function() {
-    const panel = document.querySelector('.avalone-search__panel');
-    if (panel) panel.classList.add('open');
-    const input = document.querySelector('.avalone-search__panel input');
-    if (input) input.focus();
+    const overlay = document.getElementById('global-search-overlay');
+    if (!overlay) return;
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    const input = overlay.querySelector('.avalone-search-overlay__input');
+    if (input) setTimeout(() => input.focus(), 50);
+  };
+  window.closeGlobalSearch = function() {
+    const overlay = document.getElementById('global-search-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('open');
+    overlay.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
   };
 
   function init() {
