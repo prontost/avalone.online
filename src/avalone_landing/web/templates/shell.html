@@ -37,8 +37,10 @@
     </div>
 
     <div class="avalone-search">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-      <input type="text" placeholder="Поиск..." onclick="openGlobalSearch()" readonly style="padding-left:40px">
+      <button type="button" class="avalone-search__btn" onclick="openGlobalSearch()" aria-label="Поиск">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <span>Поиск...</span>
+      </button>
     </div>
 
     <div class="avalone-header__actions">
@@ -52,10 +54,10 @@
       </button>
 
       <div class="avalone-profile">
-        <div class="avalone-profile__avatar" title="{{ user.login if user else 'Гость' }}">
+        <button type="button" class="avalone-profile__avatar" aria-label="Профиль" aria-haspopup="true" aria-expanded="false" title="{{ user.login if user else 'Гость' }}">
           {{ (user.login or 'G')[0].upper() if user else 'G' }}
-        </div>
-        <div class="avalone-profile__menu" style="display:none;position:absolute;right:0;top:calc(100%+8px);min-width:160px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow);padding:8px 0;z-index:200">
+        </button>
+        <div class="avalone-profile__menu" id="profile-menu">
           {% if user %}
           <a href="https://avalone.online/profile" class="avalone-nav__item">Профиль</a>
           <a href="https://avalone.online/logout" class="avalone-nav__item">Выйти</a>
@@ -111,5 +113,5 @@
 </nav>
 {% endif %}
 
-<script src="/static/avalone-shell.js?v=2" defer></script>
+<script src="/static/avalone-shell.js?v=3" defer></script>
 {% endmacro %}

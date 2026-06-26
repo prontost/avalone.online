@@ -38,12 +38,16 @@
     if (!profile) return;
     const avatar = profile.querySelector('.avalone-profile__avatar');
     const menu = profile.querySelector('.avalone-profile__menu');
-    if (!menu) return;
+    if (!menu || !avatar) return;
     avatar.addEventListener('click', (e) => {
       e.stopPropagation();
-      menu.classList.toggle('open');
+      const isOpen = menu.classList.toggle('open');
+      avatar.setAttribute('aria-expanded', String(isOpen));
     });
-    document.addEventListener('click', () => menu.classList.remove('open'));
+    document.addEventListener('click', () => {
+      menu.classList.remove('open');
+      avatar.setAttribute('aria-expanded', 'false');
+    });
   }
 
   // Notifications

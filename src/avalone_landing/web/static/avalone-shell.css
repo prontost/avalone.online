@@ -197,7 +197,7 @@ a:hover { opacity: 0.85; }
   .avalone-app-switcher__btn { min-width: 48px; min-height: 44px; padding: 10px; }
   .avalone-app-switcher__menu { left: 0; right: auto; min-width: 260px; }
   .avalone-search { order: 3; flex-basis: 100%; max-width: none; margin-top: 0; }
-  .avalone-search input { height: 34px; }
+  .avalone-search__btn { height: 40px; }
   .avalone-header__actions { margin-left: auto; }
   .avalone-page-header { flex-direction: column; align-items: stretch; gap: 10px; }
   .avalone-page-header .avalone-btn,
@@ -301,32 +301,26 @@ a:hover { opacity: 0.85; }
 .avalone-search {
   flex: 1;
   max-width: 400px;
-  position: relative;
 }
 
-.avalone-search input {
+.avalone-search__btn {
   width: 100%;
-  height: 38px;
-  padding: 0 12px 0 40px;
+  height: 40px;
+  padding: 0 14px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--line);
   background: var(--bg-2);
-  color: var(--txt);
-  font-size: 14px;
-  outline: none;
-  text-indent: 0;
-}
-
-.avalone-search input:focus { border-color: var(--accent); }
-
-.avalone-search svg {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
   color: var(--muted);
-  pointer-events: none;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
 }
+
+.avalone-search__btn:hover { border-color: var(--accent); color: var(--txt); }
+.avalone-search__btn svg { width: 16px; height: 16px; flex-shrink: 0; }
 
 .avalone-header__actions {
   display: flex;
@@ -358,18 +352,41 @@ a:hover { opacity: 0.85; }
 }
 
 .avalone-profile__avatar {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
+  min-width: 44px;
+  min-height: 44px;
   border-radius: 50%;
+  border: none;
+  padding: 0;
   background: var(--accent-bg);
   color: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
+
+.avalone-profile__avatar:active { transform: scale(0.96); }
+
+.avalone-profile__menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 170px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 8px 0;
+  z-index: 200;
+}
+
+.avalone-profile__menu.open { display: block; }
 
 /* Sidebar */
 .avalone-nav__section {
