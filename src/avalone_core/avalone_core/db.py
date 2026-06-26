@@ -150,16 +150,20 @@ CREATE TABLE IF NOT EXISTS money_user_settings (
 );
 
 CREATE TABLE IF NOT EXISTS money_notifications (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    tenant     INTEGER NOT NULL,
-    kind       TEXT NOT NULL,
-    title      TEXT NOT NULL,
-    body       TEXT NOT NULL,
-    data       TEXT DEFAULT '{}',
-    read       INTEGER DEFAULT 0,
-    created_at TEXT NOT NULL
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    tenant_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    app          TEXT NOT NULL DEFAULT '',
+    kind         TEXT DEFAULT 'info',
+    title        TEXT NOT NULL,
+    body         TEXT DEFAULT '',
+    data         TEXT DEFAULT '{}',
+    read         INTEGER DEFAULT 0,
+    read_at      TEXT DEFAULT '',
+    dismissed_at TEXT DEFAULT '',
+    created_at   TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_money_notifications_tenant ON money_notifications(tenant, read, created_at);
+CREATE INDEX IF NOT EXISTS idx_money_notif_tenant_app ON money_notifications(tenant_id, app);
+CREATE INDEX IF NOT EXISTS idx_money_notif_created ON money_notifications(created_at);
 
 CREATE TABLE IF NOT EXISTS money_entry_meta (
     tenant      INTEGER NOT NULL,

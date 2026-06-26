@@ -187,7 +187,9 @@ a:hover { opacity: 0.85; }
     position: relative;
   }
   .avalone-logo span { display: none; }
-  .avalone-app-switcher__btn span:nth-of-type(2) { display: none; }
+  .avalone-app-switcher__label { display: none; }
+  .avalone-app-switcher__btn { min-width: 48px; min-height: 44px; padding: 10px; }
+  .avalone-app-switcher__menu { left: 0; right: auto; min-width: 260px; }
   .avalone-search { order: 3; flex-basis: 100%; max-width: none; margin-top: 0; }
   .avalone-search input { height: 34px; }
   .avalone-header__actions { margin-left: auto; }
@@ -222,7 +224,8 @@ a:hover { opacity: 0.85; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 17px;
+  font-weight: 700;
   color: #fff;
 }
 
@@ -233,7 +236,10 @@ a:hover { opacity: 0.85; }
 .avalone-app-switcher__btn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  min-width: 44px;
+  min-height: 40px;
   padding: 8px 12px;
   border-radius: var(--radius-xs);
   border: 1px solid var(--line);
@@ -242,19 +248,25 @@ a:hover { opacity: 0.85; }
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
 }
+
+.avalone-app-switcher__btn:active { transform: scale(0.96); }
 
 .avalone-app-switcher__menu {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
   min-width: 220px;
+  max-width: min(320px, calc(100vw - 24px));
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
   display: none;
   overflow: hidden;
+  z-index: 120;
 }
 
 .avalone-app-switcher.open .avalone-app-switcher__menu { display: block; }

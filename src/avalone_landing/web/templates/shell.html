@@ -8,14 +8,14 @@
 <div class="avalone-shell {% if not app_nav %}no-sidebar{% endif %}">
   <header class="avalone-header">
     <a class="avalone-logo" href="https://avalone.online/" title="Avalone">
-      <div class="avalone-logo-mark">◈</div>
+      <div class="avalone-logo-mark" aria-hidden="true">A</div>
       <span>Avalone</span>
     </a>
 
     <div class="avalone-app-switcher">
-      <button class="avalone-app-switcher__btn" aria-haspopup="true" aria-expanded="false">
-        <span>{{ active_branch.icon or '◈' }}</span>
-        <span>{{ active_branch.name or 'Avalone' }}</span>
+      <button class="avalone-app-switcher__btn" aria-haspopup="true" aria-expanded="false" aria-label="Приложения" title="Приложения">
+        <svg class="avalone-app-switcher__icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
+        <span class="avalone-app-switcher__label">{{ active_branch.name or 'Avalone' }}</span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       <div class="avalone-app-switcher__menu">
