@@ -46,6 +46,9 @@ CREATE TABLE IF NOT EXISTS users (
     verify_sent    TEXT DEFAULT '',
     reset_token    TEXT DEFAULT '',
     reset_expires  TEXT DEFAULT '',
+    language       TEXT DEFAULT 'auto',
+    referral_code  TEXT UNIQUE,
+    referred_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at     TEXT NOT NULL
 );
 
@@ -330,12 +333,124 @@ CREATE TABLE IF NOT EXISTS work_slept_entries (
     occurred_at  TEXT,
     PRIMARY KEY (tenant, name)
 );
+
+-- Device fingerprinting and screen-time tracking.
+CREATE TABLE IF NOT EXISTS avalone_devices (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    fingerprint TEXT NOT NULL,
+    device_id   TEXT UNIQUE,
+    user_agent  TEXT,
+    screen      TEXT,
+    platform    TEXT,
+    last_ip     TEXT,
+    created_at  TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_avalone_devices_user ON avalone_devices(user_id);
+CREATE INDEX IF NOT EXISTS idx_avalone_devices_fingerprint ON avalone_devices(fingerprint);
+CREATE INDEX IF NOT EXISTS idx_avalone_devices_device_id ON avalone_devices(device_id);
+
+CREATE TABLE IF NOT EXISTS avalone_screen_time (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL,
+    device_id   INTEGER NOT NULL REFERENCES avalone_devices(id) ON DELETE CASCADE,
+    date        TEXT NOT NULL,
+    seconds     INTEGER NOT NULL DEFAULT 0,
+    updated_at  TEXT NOT NULL,
+    UNIQUE(user_id, device_id, date)
+);
+CREATE INDEX IF NOT EXISTS idx_avalone_screen_time_user_date ON avalone_screen_time(user_id, date);
+
+CREATE TABLE IF NOT EXISTS avalone_referrals (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    referrer_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    invitee_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    code_used         TEXT,
+    device_fingerprint TEXT,
+    created_at        TEXT NOT NULL,
+    UNIQUE(invitee_id)
+);
 """
+
+
+def _now() -> str:
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _apply_migrations() -> None:
+    """Idempotently add Phase-2 columns/tables to an existing unified DB."""
+    from avalone_core.database import Database
+
+    with Database.shared().connection() as con:
+        try:
+            cols = {r[1] for r in con.execute("PRAGMA table_info(users)")}
+        except sqlite3.OperationalError:
+            cols = set()
+        additions = {
+            "referral_code": "TEXT",
+            "referred_by": "INTEGER REFERENCES users(id) ON DELETE SET NULL",
+        }
+        for col, dtype in additions.items():
+            if col not in cols:
+                try:
+                    con.execute(f"ALTER TABLE users ADD COLUMN {col} {dtype}")
+                except sqlite3.OperationalError:
+                    pass
+        try:
+            con.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code)"
+            )
+        except sqlite3.OperationalError:
+            pass
+        con.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS avalone_devices (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                fingerprint TEXT NOT NULL,
+                device_id   TEXT UNIQUE,
+                user_agent  TEXT,
+                screen      TEXT,
+                platform    TEXT,
+                last_ip     TEXT,
+                created_at  TEXT NOT NULL,
+                last_seen_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_avalone_devices_user ON avalone_devices(user_id);
+            CREATE INDEX IF NOT EXISTS idx_avalone_devices_fingerprint ON avalone_devices(fingerprint);
+            CREATE INDEX IF NOT EXISTS idx_avalone_devices_device_id ON avalone_devices(device_id);
+
+            CREATE TABLE IF NOT EXISTS avalone_screen_time (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id     INTEGER NOT NULL,
+                device_id   INTEGER NOT NULL REFERENCES avalone_devices(id) ON DELETE CASCADE,
+                date        TEXT NOT NULL,
+                seconds     INTEGER NOT NULL DEFAULT 0,
+                updated_at  TEXT NOT NULL,
+                UNIQUE(user_id, device_id, date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_avalone_screen_time_user_date ON avalone_screen_time(user_id, date);
+
+            CREATE TABLE IF NOT EXISTS avalone_referrals (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                referrer_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                invitee_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                code_used         TEXT,
+                device_fingerprint TEXT,
+                created_at        TEXT NOT NULL,
+                UNIQUE(invitee_id)
+            );
+            """
+        )
+        con.commit()
 
 
 def migrate() -> None:
     """Backward-compatible migration. Prefer `Database.shared().migrate()`."""
     Database.shared().migrate()
+    _apply_migrations()
 
 
 def table_exists(name: str) -> bool:

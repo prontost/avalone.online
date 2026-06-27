@@ -33,7 +33,7 @@
       </div>
       <div class="avalone-form-group">
         <label class="avalone-label" for="invite">{{ t('auth_label_invite') }}</label>
-        <input class="avalone-input" id="invite" name="invite" type="text" autocomplete="off" placeholder="{{ t('auth_placeholder_invite') }}">
+        <input class="avalone-input" id="invite" name="invite" type="text" autocomplete="off" placeholder="{{ t('auth_placeholder_invite') }}" value="{{ prefilled_ref }}">
       </div>
       <button class="avalone-btn avalone-btn-primary avalone-btn-block" type="submit">{{ t('auth_btn_register') }}</button>
     </form>
@@ -43,4 +43,15 @@
     </div>
   </div>
 </div>
+
+<script>
+(function fillRefFromStorage(){
+  var invite = document.getElementById('invite');
+  if(!invite || invite.value.trim()) return;
+  try {
+    var ref = localStorage.getItem('avalone_ref_code');
+    if(ref) invite.value = ref;
+  } catch(e) {}
+})();
+</script>
 {% endblock %}

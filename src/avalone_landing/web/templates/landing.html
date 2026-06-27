@@ -1,259 +1,74 @@
 {% extends "avalone_base.html" %}
 
-{% block title %}{{ t('brand') }}{% endblock %}
-
-{% block extra_head %}
-<meta name="description" content="{{ t('brand_tagline') }}">
-<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<style>
-:root{
-  --bg:#0a0c10;
-  --bg-2:#11141b;
-  --card:#151922;
-  --card-2:#1c212c;
-  --line:#2a3040;
-  --line-2:#3a4156;
-  --txt:#f0f2f6;
-  --muted:#8b94a7;
-  --accent:#7c5cff;
-  --accent-2:#a78bfa;
-  --green:#3fb950;
-  --amber:#d29922;
-  --red:#f85149;
-  --shadow:0 8px 32px rgba(0,0,0,.35);
-}
-@media (prefers-color-scheme: light){
-  :root:not([data-theme="dark"]){
-    --bg:#f5f7fb;
-    --bg-2:#eef1f7;
-    --card:#ffffff;
-    --card-2:#f8f9fc;
-    --line:#dde2ec;
-    --line-2:#c9d0e0;
-    --txt:#131620;
-    --muted:#5a6275;
-    --accent:#6338e0;
-    --accent-2:#7c5cff;
-    --green:#1a7f37;
-    --amber:#9a6700;
-    --red:#cf222e;
-    --shadow:0 8px 32px rgba(20,20,40,.12);
-  }
-}
-:root[data-theme="light"]{
-  --bg:#f5f7fb;--bg-2:#eef1f7;--card:#ffffff;--card-2:#f8f9fc;
-  --line:#dde2ec;--line-2:#c9d0e0;--txt:#131620;--muted:#5a6275;
-  --accent:#6338e0;--accent-2:#7c5cff;--green:#1a7f37;--amber:#9a6700;--red:#cf222e;
-  --shadow:0 8px 32px rgba(20,20,40,.12);
-}
-:root[data-theme="dark"]{
-  --bg:#0a0c10;--bg-2:#11141b;--card:#151922;--card-2:#1c212c;
-  --line:#2a3040;--line-2:#3a4156;--txt:#f0f2f6;--muted:#8b94a7;
-  --accent:#7c5cff;--accent-2:#a78bfa;--green:#3fb950;--amber:#d29922;--red:#f85149;
-  --shadow:0 8px 32px rgba(0,0,0,.35);
-}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;max-width:100vw;overflow-x:hidden}
-body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen,Ubuntu,sans-serif;min-height:100vh}
-body::before{
-  content:'';position:fixed;inset:0;z-index:-1;
-  background:radial-gradient(circle at 20% 10%, rgba(124,92,255,.12), transparent 40%),
-             radial-gradient(circle at 80% 90%, rgba(124,92,255,.08), transparent 35%);
-  pointer-events:none;
-}
-.wrap{max-width:720px;margin:0 auto;padding:24px 16px 110px;min-width:0}
-.landing-wrap{padding-top:calc(var(--header-h) + 16px)}
-
-/* Header */
-.portal-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:10px}
-.brand{display:flex;align-items:center;gap:12px;min-width:0}
-.logo-mark{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;box-shadow:var(--shadow);flex:0 0 auto;color:#fff}
-.brand-title{font-size:22px;font-weight:700;letter-spacing:-.3px;line-height:1.1}
-.brand-sub{color:var(--muted);font-size:12px;margin-top:4px;line-height:1.3}
-.header-actions{display:flex;gap:8px;align-items:center;flex:0 0 auto;margin-top:2px}
-.icon-btn{width:38px;height:38px;border-radius:50%;background:rgba(124,92,255,.10);border:none;color:var(--txt);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;transition:transform .15s,background .15s,box-shadow .15s;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 2px 8px rgba(0,0,0,.08)}
-.icon-btn:hover{background:rgba(124,92,255,.20);transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,92,255,.15)}
-.lang-select-wrap{display:inline-flex;align-items:center;gap:6px;height:44px;min-width:110px;border-radius:22px;background:rgba(124,92,255,.10);border:1px solid transparent;color:var(--txt);padding:0 14px;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 2px 8px rgba(0,0,0,.08);transition:background .15s,border-color .15s}
-.lang-select-wrap:focus-within{background:rgba(124,92,255,.20);border-color:var(--accent)}
-.lang-select-icon{font-size:16px;line-height:1}
-.lang-select{flex:0 0 auto;height:100%;min-width:70px;background:transparent;border:none;color:var(--txt);font-size:16px;font-weight:500;cursor:pointer;outline:none;padding-right:20px}
-.lang-select option{background:var(--card);color:var(--txt)}
-
-/* Status card */
-.status-card{
-  background:linear-gradient(135deg,rgba(124,92,255,.18),rgba(124,92,255,.06));
-  border:1px solid var(--line-2);
-  border-radius:20px;padding:18px 20px;margin-bottom:20px;
-  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-}
-.status-card.active{background:linear-gradient(135deg,rgba(63,185,80,.15),rgba(63,185,80,.05));border-color:rgba(63,185,80,.3)}
-.status-card.dev{background:linear-gradient(135deg,rgba(217,153,34,.15),rgba(217,153,34,.05));border-color:rgba(217,153,34,.3)}
-.status-title{font-size:14px;font-weight:600;color:var(--txt);margin-bottom:6px;display:flex;align-items:center;gap:8px}
-.status-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
-.status-dot.active{background:var(--green);animation:none}
-.status-dot.dev{background:var(--amber);animation:none}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-.status-text{color:var(--muted);font-size:13px;line-height:1.5;margin:0}
-.status-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
-.pill-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;background:var(--card);border:1px solid var(--line);color:var(--txt);font-size:13px;font-weight:500;text-decoration:none;transition:background .15s,border-color .15s}
-.pill-btn:hover{border-color:var(--accent);background:var(--card-2)}
-
-/* Sections */
-.section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:28px 0 12px}
-
-/* Bento grid */
-.bento{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-@media (min-width:560px){.bento{grid-template-columns:repeat(3,1fr);gap:14px}}
-.branch{
-  position:relative;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;
-  text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:8px;
-  transition:transform .1s,border-color .15s,box-shadow .15s;
-}
-.branch:hover{border-color:var(--accent);box-shadow:var(--shadow)}
-.branch:active{transform:scale(.98)}
-.branch.active{border-color:rgba(124,92,255,.4);background:linear-gradient(180deg,var(--card),var(--card-2))}
-.branch.dev{border-color:rgba(217,153,34,.35);background:linear-gradient(180deg,var(--card),rgba(217,153,34,.05))}
-.branch.planned{opacity:.85}
-.branch-icon{font-size:32px;line-height:1}
-.branch-name{font-size:15px;font-weight:700}
-.branch-desc{font-size:12px;color:var(--muted);line-height:1.35;flex:1}
-.branch-badge{
-  position:absolute;top:10px;right:10px;font-size:10px;font-weight:700;text-transform:uppercase;
-  padding:3px 7px;border-radius:999px;background:rgba(217,153,34,.15);color:var(--amber);border:1px solid rgba(217,153,34,.25)
-}
-.branch-badge.active{background:rgba(63,185,80,.15);color:var(--green);border-color:rgba(63,185,80,.25)}
-.branch-badge.dev{background:rgba(217,153,34,.2);color:var(--amber);border-color:rgba(217,153,34,.3)}
-.branch-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
-.branch-action{font-size:11px;padding:5px 9px;border-radius:8px;background:var(--bg-2);border:1px solid var(--line);color:var(--txt);text-decoration:none;white-space:nowrap}
-.branch-action:hover{border-color:var(--accent)}
-
-/* Quick actions */
-.quick-actions{display:flex;flex-wrap:wrap;gap:10px;padding-bottom:6px}
-.quick-action{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:14px;background:var(--card);border:1px solid var(--line);color:var(--txt);font-size:14px;font-weight:500;text-decoration:none;transition:border-color .15s}
-.quick-action:hover{border-color:var(--accent);background:var(--card-2)}
-
-/* Coming soon panel */
-.teaser-panel{background:var(--card);border:1px dashed var(--line-2);border-radius:18px;padding:18px;text-align:center;margin-top:24px}
-.teaser-title{font-size:15px;font-weight:700;margin-bottom:6px}
-.teaser-text{font-size:13px;color:var(--muted);margin-bottom:14px}
-.teaser-form{display:flex;gap:10px;max-width:360px;margin:0 auto}
-.teaser-input{flex:1;padding:10px 14px;border-radius:12px;background:var(--bg-2);border:1px solid var(--line);color:var(--txt);font-size:14px;outline:none}
-.teaser-input:focus{border-color:var(--accent)}
-.teaser-btn{padding:10px 16px;border-radius:12px;background:var(--accent);border:none;color:#fff;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
-@media (max-width: 420px) {
-  .teaser-form{flex-wrap:wrap}
-  .teaser-input, .teaser-btn{width:100%}
-}
-
-/* Bottom nav */
-.bottom-nav{
-  position:fixed;bottom:0;left:0;right:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom));
-  background:rgba(10,12,16,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-  border-top:1px solid var(--line);z-index:100;
-}
-@media (prefers-color-scheme: light){
-  :root:not([data-theme="dark"]) .bottom-nav{background:rgba(245,247,251,.92)}
-}
-:root[data-theme="light"] .bottom-nav{background:rgba(245,247,251,.92)}
-.bottom-nav-inner{max-width:720px;margin:0 auto;display:flex;justify-content:space-around;align-items:center}
-.bottom-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 12px;color:var(--muted);text-decoration:none;font-size:11px;border-radius:12px;transition:color .15s,background .15s}
-.bottom-item:hover{color:var(--txt)}
-.bottom-item.active{color:var(--accent);background:rgba(124,92,255,.1)}
-.bottom-icon{font-size:22px}
-
-/* Footer */
-footer{margin-top:40px;text-align:center;color:var(--muted);font-size:12px}
-</style>
-{% endblock %}
+{% block title %}{{ t('brand', lang=lang) }}{% endblock %}
 
 {% block content %}
-  <div class="wrap landing-wrap">
-    <div class="portal-header">
-      <div class="brand">
-        <div class="logo-mark" aria-hidden="true">A</div>
-        <div class="min-w-0">
-          <div class="brand-title" data-i="brand">Avalone</div>
-          <div class="brand-sub" data-i="brand_tagline">{{ t('brand_tagline') }}</div>
-        </div>
-      </div>
-      <div class="header-actions">
-        <label class="lang-select-wrap" for="langSelect">
-          <span class="lang-select-icon" aria-hidden="true">🌐</span>
-          <select class="lang-select" id="langSelect" aria-label="{{ t('lang_selector_label') }}">
-            <option value="auto">{{ t('lang_auto') }}</option>
-            <option value="ru">{{ t('lang_ru') }}</option>
-            <option value="en">{{ t('lang_en') }}</option>
-            <option value="ko">{{ t('lang_ko') }}</option>
-          </select>
-        </label>
+<div class="avalone-landing">
+  <div class="landing-hero">
+    <div class="landing-brand">
+      <div class="landing-logo" aria-hidden="true">A</div>
+      <div>
+        <div class="landing-brand__title">{{ t('brand', lang=lang) }}</div>
+        <div class="landing-brand__tagline">{{ t('brand_tagline', lang=lang) }}</div>
       </div>
     </div>
-
-    <div class="status-card active" id="statusCard">
-      <div class="status-title"><span class="status-dot active"></span><span data-i="status_title">{{ t('status_title') }}</span></div>
-      <p class="status-text" data-i="status_text">{{ t('status_text') }}</p>
-      <div class="status-actions">
-        <a class="pill-btn" href="https://counta.avalone.online"  data-i="btn_open_money">{{ t('btn_open_money') }}</a>
-        <a class="pill-btn" href="https://work.avalone.online"  data-i="btn_open_work">{{ t('btn_open_work') }}</a>
-      </div>
-    </div>
-
-    <div class="section-title" data-i="quick_title">{{ t('quick_title') }}</div>
-    <div class="quick-actions">
-      <a class="quick-action" href="https://counta.avalone.online"  data-i="quick_budget">{{ t('app_money') }}</a>
-      <a class="quick-action" href="https://work.avalone.online"  data-i="quick_work">{{ t('app_work') }}</a>
-      <a class="quick-action" href="https://avalone.online/profile" data-i="quick_profile">{{ t('quick_profile') }}</a>
-      <a class="quick-action" href="#" onclick="showComingSoon('{{ t('app_education') }}');return false" data-i="quick_community">{{ t('quick_community') }}</a>
-    </div>
-
-    <div class="section-title" data-i="apps_title">{{ t('apps_title') }}</div>
-    <main class="bento" id="branches">
-      {% for branch in branch_list %}
-      <a class="branch {{ 'active' if branch.status == 'active' else ('dev' if branch.status == 'in_dev' else 'planned') }}" href="{{ branch.url or '#' }}" {% if branch.status != 'active' %}onclick="return showComingSoon('{{ branch.name }}')"{% endif %}>
-        <span class="branch-badge {{ 'active' if branch.status == 'active' else ('dev' if branch.status == 'in_dev' else '') }}">
-          {{ t('status_active') if branch.status == 'active' else (t('status_in_dev') if branch.status == 'in_dev' else t('status_planned')) }}
-        </span>
-        <div class="branch-icon">{{ branch.icon }}</div>
-        <div class="branch-name">{{ branch.name }}</div>
-        <div class="branch-desc">{{ branch.description }}</div>
-      </a>
-      {% endfor %}
-    </main>
-
-    <div class="teaser-panel">
-      <div class="teaser-title" data-i="teaser_title">{{ t('teaser_title') }}</div>
-      <p class="teaser-text" data-i="teaser_text">{{ t('teaser_text') }}</p>
-      <form class="teaser-form" onsubmit="return submitWaitlist(event)">
-        <input class="teaser-input" type="text" placeholder="{{ t('teaser_placeholder') }}" data-i-placeholder="teaser_placeholder">
-        <button class="teaser-btn" type="submit" data-i="teaser_btn">{{ t('teaser_btn') }}</button>
-      </form>
-    </div>
-
-    <footer>
-      <span data-i="footer">{{ t('footer') }}</span>
-    </footer>
   </div>
 
-  <nav class="bottom-nav">
-    <div class="bottom-nav-inner">
-      <a class="bottom-item active" href="/">
-        <span class="bottom-icon">A</span>
-        <span data-i="nav_home">{{ t('nav_home') }}</span>
-      </a>
-      <a class="bottom-item" href="https://counta.avalone.online" >
-        <span class="bottom-icon">🪙</span>
-        <span data-i="nav_money">{{ t('nav_money') }}</span>
-      </a>
-      <a class="bottom-item" href="#" onclick="showComingSoon('{{ t('app_education') }}');return false">
-        <span class="bottom-icon">💬</span>
-        <span data-i="nav_chat">{{ t('nav_chat') }}</span>
-      </a>
-      <a class="bottom-item" href="https://avalone.online/profile">
-        <span class="bottom-icon">👤</span>
-        <span data-i="nav_profile">{{ t('nav_profile') }}</span>
-      </a>
+  {% if not user %}
+  <div class="avalone-card landing-cta">
+    <h2 class="mt-0">{{ t('landing_sign_up_title', lang=lang) }}</h2>
+    <p class="text-muted">{{ t('landing_sign_up_text', lang=lang) }}</p>
+    <div class="landing-cta__actions">
+      <a class="avalone-btn avalone-btn-primary avalone-btn-block landing-register-link" href="/register">{{ t('landing_btn_register', lang=lang) }}</a>
+      <a class="avalone-btn avalone-btn-secondary avalone-btn-block" href="/login">{{ t('landing_btn_login', lang=lang) }}</a>
     </div>
-  </nav>
+  </div>
+  {% endif %}
+
+  <div class="status-card active" id="statusCard">
+    <div class="status-title"><span class="status-dot active"></span><span>{{ t('status_title', lang=lang) }}</span></div>
+    <p class="status-text">{{ t('status_text', lang=lang) }}</p>
+    <div class="status-actions">
+      <a class="pill-btn" href="https://counta.avalone.online">{{ t('btn_open_money', lang=lang) }}</a>
+      <a class="pill-btn" href="https://work.avalone.online">{{ t('btn_open_work', lang=lang) }}</a>
+    </div>
+  </div>
+
+  <div class="section-title">{{ t('quick_title', lang=lang) }}</div>
+  <div class="quick-actions">
+    <a class="quick-action" href="https://counta.avalone.online">{{ t('app_money', lang=lang) }}</a>
+    <a class="quick-action" href="https://work.avalone.online">{{ t('app_work', lang=lang) }}</a>
+    <a class="quick-action" href="https://avalone.online/profile">{{ t('quick_profile', lang=lang) }}</a>
+    <a class="quick-action" href="#" onclick="showComingSoon('{{ t('app_education', lang=lang) }}');return false">{{ t('quick_community', lang=lang) }}</a>
+  </div>
+
+  <div class="section-title">{{ t('apps_title', lang=lang) }}</div>
+  <main class="bento" id="branches">
+    {% for branch in branch_list %}
+    <a class="branch {{ 'active' if branch.status == 'active' else ('dev' if branch.status == 'in_dev' else 'planned') }}" href="{{ branch.url or '#' }}" {% if branch.status != 'active' %}onclick="return showComingSoon('{{ branch.name }}')"{% endif %}>
+      <span class="branch-badge {{ 'active' if branch.status == 'active' else ('dev' if branch.status == 'in_dev' else '') }}">
+        {{ t('status_active', lang=lang) if branch.status == 'active' else (t('status_in_dev', lang=lang) if branch.status == 'in_dev' else t('status_planned', lang=lang)) }}
+      </span>
+      <div class="branch-icon">{{ branch.icon }}</div>
+      <div class="branch-name">{{ branch.name }}</div>
+      <div class="branch-desc">{{ branch.description }}</div>
+    </a>
+    {% endfor %}
+  </main>
+
+  <div class="teaser-panel">
+    <div class="teaser-title">{{ t('teaser_title', lang=lang) }}</div>
+    <p class="teaser-text">{{ t('teaser_text', lang=lang) }}</p>
+    <form class="teaser-form" onsubmit="return submitWaitlist(event)">
+      <input class="teaser-input" type="text" placeholder="{{ t('teaser_placeholder', lang=lang) }}">
+      <button class="teaser-btn" type="submit">{{ t('teaser_btn', lang=lang) }}</button>
+    </form>
+  </div>
+
+  <footer>
+    <span>{{ t('footer', lang=lang) }}</span>
+  </footer>
+</div>
 
 <script>
 var deferredInstallPrompt = null;
@@ -316,18 +131,23 @@ function updateInstallButton(){
   }
 }
 
+const PWA_ALREADY_INSTALLED = {{ t('pwa_already_installed', lang=lang) | tojson }};
+const PWA_INSTALL_IOS_SAFARI = {{ t('pwa_install_ios_safari', lang=lang) | tojson }};
+const PWA_INSTALL_IOS_OTHER = {{ t('pwa_install_ios_other', lang=lang) | tojson }};
+const PWA_INSTALL_ANDROID = {{ t('pwa_install_android', lang=lang) | tojson }};
+const PWA_INSTALL_DESKTOP = {{ t('pwa_install_desktop', lang=lang) | tojson }};
+
 function installPWA(){
-  var l=resolveLang(localStorage.getItem('avalone_lang')||'auto');
   if(isInstalledPWA()){
-    alert(I18N[l].pwa_already_installed);
+    alert(PWA_ALREADY_INSTALLED);
     return;
   }
   if(isIOSSafari()){
-    alert(I18N[l].pwa_install_ios_safari);
+    alert(PWA_INSTALL_IOS_SAFARI);
     return;
   }
   if(isIOS()){
-    alert(I18N[l].pwa_install_ios_other);
+    alert(PWA_INSTALL_IOS_OTHER);
     return;
   }
   if(deferredInstallPrompt){
@@ -341,9 +161,9 @@ function installPWA(){
     return;
   }
   if(isAndroid()){
-    alert(I18N[l].pwa_install_android);
+    alert(PWA_INSTALL_ANDROID);
   }else{
-    alert(I18N[l].pwa_install_desktop);
+    alert(PWA_INSTALL_DESKTOP);
   }
 }
 
@@ -352,59 +172,41 @@ function installPWA(){
   window.matchMedia('(display-mode: standalone)').addEventListener('change', updateInstallButton);
 })();
 
-const I18N = {{ i18n_js() | tojson }};
-const GLOSSARY = I18N;
+const COMING_SOON = {{ t('coming_soon', lang=lang) | tojson }};
+const SEARCH_PLACEHOLDER = {{ t('search_placeholder', lang=lang) | tojson }};
+const SEARCH_RESULT_PREFIX = {{ t('search_result_prefix', lang=lang) | tojson }};
+const WAITLIST_THANKS_PREFIX = {{ t('waitlist_thanks_prefix', lang=lang) | tojson }};
 
-function detectLang(){
-  var s=navigator.language||navigator.userLanguage||'ru';
-  if(s.startsWith('ko'))return'ko';
-  if(s.startsWith('en'))return'en';
-  return'ru';
-}
-function resolveLang(l){return l==='auto'?detectLang():(I18N[l]?l:'ru');}
-function applyLang(l){
-  l=resolveLang(l);localStorage.setItem('avalone_lang',l);document.documentElement.lang=l;
-  var t=I18N[l];
-  document.querySelectorAll('[data-i]').forEach(function(el){var k=el.dataset.i;if(t[k])el.textContent=t[k];});
-  document.querySelectorAll('[data-i-placeholder]').forEach(function(el){var k=el.dataset.iPlaceholder;if(t[k])el.placeholder=t[k];});
-}
 function showComingSoon(name){
-  var l=resolveLang(localStorage.getItem('avalone_lang')||'auto');
-  alert(I18N[l].coming_soon + name);
+  alert(COMING_SOON + name);
   return false;
 }
 function showSearch(){
-  var l=resolveLang(localStorage.getItem('avalone_lang')||'auto');
-  var q=prompt(I18N[l].search_placeholder || 'Search...');
-  if(q)alert(I18N[l].search_result_prefix + q);
+  var q = prompt(SEARCH_PLACEHOLDER);
+  if(q) alert(SEARCH_RESULT_PREFIX + q);
 }
 function submitWaitlist(e){
   e.preventDefault();
-  var l=resolveLang(localStorage.getItem('avalone_lang')||'auto');
-  var input=e.target.querySelector('input');
+  var input = e.target.querySelector('input');
   if(input.value.trim()){
-    alert(I18N[l].waitlist_thanks_prefix + input.value);
-    input.value='';
+    alert(WAITLIST_THANKS_PREFIX + input.value);
+    input.value = '';
   }
   return false;
 }
 
-(function(){
-  var stored=localStorage.getItem('avalone_lang')||'auto';
-  applyLang(stored);
-  var sel=document.getElementById('langSelect');
-  if(sel){sel.value=stored;sel.addEventListener('change',function(){applyLang(sel.value);});}
-})();
-</script>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-(function(){
-  var stored=localStorage.getItem('avalone_lang')||'auto';
-  applyLang(stored);
-  var sel=document.getElementById('langSelect');
-  if(sel){sel.value=stored;sel.addEventListener('change',function(){applyLang(sel.value);});}
+(function initRefCode(){
+  var params = new URLSearchParams(window.location.search);
+  var ref = params.get('ref');
+  if(ref){
+    try { localStorage.setItem('avalone_ref_code', ref); } catch(e) {}
+    var suffix = '?ref=' + encodeURIComponent(ref);
+    document.querySelectorAll('.landing-register-link').forEach(function(el){
+      if(el.href.indexOf('?') === -1){
+        el.href = el.href + suffix;
+      }
+    });
+  }
 })();
 </script>
 {% endblock %}

@@ -54,7 +54,8 @@ class UserRepository(Repository):
     def get_by_id(self, user_id: int) -> User | None:
         with self._conn() as con:
             row = con.execute(
-                "SELECT id, login, email, email_verified, created_at FROM users WHERE id = ?",
+                "SELECT id, login, email, email_verified, referral_code, referred_by, created_at "
+                "FROM users WHERE id = ?",
                 (user_id,),
             ).fetchone()
         if not row:
@@ -67,8 +68,8 @@ class UserRepository(Repository):
         value = value.strip().lower()
         with self._conn() as con:
             row = con.execute(
-                "SELECT id, login, email, email_verified, created_at FROM users "
-                "WHERE login = ? OR email = ?",
+                "SELECT id, login, email, email_verified, referral_code, referred_by, created_at "
+                "FROM users WHERE login = ? OR email = ?",
                 (value, value),
             ).fetchone()
         if not row:
@@ -84,8 +85,9 @@ class UserRepository(Repository):
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         with self._conn() as con:
             cur = con.execute(
-                "INSERT INTO users (login, pwhash, email, created_at) VALUES (?, ?, ?, ?)",
-                (login, self.hash_password(password), email.strip().lower(), now),
+                "INSERT INTO users (login, pwhash, email, referral_code, referred_by, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (login, self.hash_password(password), email.strip().lower(), None, None, now),
             )
             return cur.lastrowid or 0
 

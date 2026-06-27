@@ -192,11 +192,14 @@ _PORTAL_SEED_EXTRA: list[dict[str, Any]] = [
     {"key": "profile_password_changed",      "ru": "Пароль изменён",                                      "en": "Password changed",                           "ko": "비밀번호가 변경되었습니다", "kind": "ui", "module": "portal"},
 
     # Shared shell
+    {"key": "shell_menu_title",              "ru": "Меню Avalone",                                        "en": "Avalone menu",                               "ko": "Avalone 메뉴", "kind": "ui", "module": "portal"},
+    {"key": "shell_nav_home",                "ru": "Портал",                                              "en": "Portal",                                     "ko": "포털", "kind": "ui", "module": "portal"},
     {"key": "shell_apps_label",              "ru": "Приложения",                                          "en": "Apps",                                       "ko": "앱", "kind": "ui", "module": "portal"},
     {"key": "shell_search_label",            "ru": "Поиск",                                               "en": "Search",                                     "ko": "검색", "kind": "ui", "module": "portal"},
     {"key": "shell_search_placeholder",      "ru": "Поиск...",                                            "en": "Search...",                                  "ko": "검색...", "kind": "ui", "module": "portal"},
     {"key": "shell_search_close",            "ru": "Закрыть",                                             "en": "Close",                                      "ko": "닫기", "kind": "ui", "module": "portal"},
     {"key": "shell_theme_label",             "ru": "Тема",                                                "en": "Theme",                                      "ko": "테마", "kind": "ui", "module": "portal"},
+    {"key": "shell_language_label",          "ru": "Язык",                                                "en": "Language",                                   "ko": "언어", "kind": "ui", "module": "portal"},
     {"key": "shell_notifications_label",     "ru": "Уведомления",                                         "en": "Notifications",                              "ko": "알림", "kind": "ui", "module": "portal"},
     {"key": "shell_profile_label",           "ru": "Профиль",                                             "en": "Profile",                                    "ko": "프로필", "kind": "ui", "module": "portal"},
     {"key": "shell_profile_guest",           "ru": "Гость",                                               "en": "Guest",                                      "ko": "게스트", "kind": "ui", "module": "portal"},
@@ -205,6 +208,12 @@ _PORTAL_SEED_EXTRA: list[dict[str, Any]] = [
     {"key": "shell_profile_logout",          "ru": "Выйти",                                               "en": "Log out",                                    "ko": "로그아웃", "kind": "ui", "module": "portal"},
     {"key": "shell_status_in_dev",           "ru": "В разработке",                                        "en": "In development",                             "ko": "개발 중", "kind": "ui", "module": "portal"},
     {"key": "shell_status_planned",          "ru": "В планах",                                            "en": "Planned",                                    "ko": "계획 중", "kind": "ui", "module": "portal"},
+    {"key": "shell_close_menu",              "ru": "Закрыть меню",                                        "en": "Close menu",                                 "ko": "메뉴 닫기", "kind": "ui", "module": "portal"},
+    {"key": "shell_share_app",               "ru": "Поделиться Avalone",                                  "en": "Share Avalone",                              "ko": "Avalone 공유", "kind": "ui", "module": "portal"},
+    {"key": "shell_admin_link",              "ru": "Администрирование",                                   "en": "Administration",                             "ko": "관리", "kind": "ui", "module": "portal"},
+    {"key": "shell_login",                   "ru": "Войти",                                               "en": "Sign in",                                    "ko": "로그인", "kind": "ui", "module": "portal"},
+    {"key": "shell_logout",                  "ru": "Выйти",                                               "en": "Log out",                                    "ko": "로그아웃", "kind": "ui", "module": "portal"},
+    {"key": "shell_profile",                 "ru": "Профиль",                                             "en": "Profile",                                    "ko": "프로필", "kind": "ui", "module": "portal"},
 
     # PWA manifest
     {"key": "manifest_name",                 "ru": "Avalone",                                             "en": "Avalone",                                    "ko": "Avalone", "kind": "ui", "module": "portal"},
@@ -286,6 +295,39 @@ _PORTAL_SEED_EXTRA: list[dict[str, Any]] = [
     {"key": "admin_test_email_to",           "ru": "Кому",                                                "en": "To",                                         "ko": "받는 사람", "kind": "ui", "module": "portal"},
     {"key": "admin_test_email_sent",         "ru": "Тестовое письмо отправлено.",                         "en": "Test email sent.",                           "ko": "테스트 이메일을 본냈습니다.", "kind": "ui", "module": "portal"},
     {"key": "admin_test_email_failed",       "ru": "Не удалось отправить тестовое письмо.",               "en": "Failed to send test email.",                 "ko": "테스트 이메일 본내기 실패.", "kind": "ui", "module": "portal"},
+
+    # Referral / share
+    {"key": "toast_share_link_copied",       "ru": "Ссылка скопирована",                                  "en": "Link copied",                                "ko": "링크가 복사되었습니다", "kind": "ui", "module": "portal"},
+    {"key": "referral_title",                "ru": "Пригласить друзей",                                   "en": "Invite friends",                             "ko": "친구 초대", "kind": "ui", "module": "portal"},
+    {"key": "referral_code_label",           "ru": "Ваш код",                                             "en": "Your code",                                  "ko": "내 코드", "kind": "ui", "module": "portal"},
+    {"key": "referral_invitees_label",       "ru": "Приглашённые",                                        "en": "Invitees",                                   "ko": "초대한 사람", "kind": "ui", "module": "portal"},
+    {"key": "referral_empty",                "ru": "Пока никто не воспользовался вашей ссылкой.",         "en": "No one has used your link yet.",             "ko": "아직 링크를 사용한 사람이 없습니다.", "kind": "ui", "module": "portal"},
+    {"key": "referral_share_hint",           "ru": "Поделитесь ссылкой — друзья получат доступ к Avalone.", "en": "Share the link — friends get access to Avalone.", "ko": "링크를 공유하면 친구들이 Avalone을 사용할 수 있습니다.", "kind": "ui", "module": "portal"},
+
+    # Screen time
+    {"key": "screen_time_title",             "ru": "Время в приложении",                                  "en": "Screen time",                                "ko": "사용 시간", "kind": "ui", "module": "portal"},
+    {"key": "screen_time_today",             "ru": "Сегодня",                                             "en": "Today",                                      "ko": "오늘", "kind": "ui", "module": "portal"},
+    {"key": "screen_time_total",             "ru": "Всего",                                               "en": "Total",                                      "ko": "전체", "kind": "ui", "module": "portal"},
+
+    # Phase 2: share dialog strings.
+    {"key": "share_copy_prompt",             "ru": "Скопируйте ссылку:",                                  "en": "Copy link:",                                 "ko": "링크를 복사하세요:", "kind": "ui", "module": "portal"},
+
+    # Phase 2: profile referral / screen time.
+    {"key": "profile_referral_title",        "ru": "Пригласить друзей",                                   "en": "Invite friends",                             "ko": "친구 초대", "kind": "ui", "module": "portal"},
+    {"key": "profile_referral_code_label",   "ru": "Ваш код",                                             "en": "Your code",                                  "ko": "내 코드", "kind": "ui", "module": "portal"},
+    {"key": "profile_referral_invitees",     "ru": "Приглашённые",                                        "en": "Invitees",                                   "ko": "초대한 사람", "kind": "ui", "module": "portal"},
+    {"key": "profile_referral_empty",        "ru": "Пока никто не воспользовался вашей ссылкой.",         "en": "No one has used your link yet.",             "ko": "아직 링크를 사용한 사람이 없습니다.", "kind": "ui", "module": "portal"},
+    {"key": "profile_referral_share_hint",   "ru": "Поделитесь ссылкой — друзья получат доступ к Avalone.", "en": "Share the link — friends get access to Avalone.", "ko": "링크를 공유하면 친구들이 Avalone을 사용할 수 있습니다.", "kind": "ui", "module": "portal"},
+    {"key": "profile_referral_copy",         "ru": "Копировать",                                          "en": "Copy",                                       "ko": "복사", "kind": "ui", "module": "portal"},
+    {"key": "profile_screen_time_title",     "ru": "Время в приложении",                                  "en": "Screen time",                                "ko": "사용 시간", "kind": "ui", "module": "portal"},
+    {"key": "profile_screen_time_today",     "ru": "Сегодня",                                             "en": "Today",                                      "ko": "오늘", "kind": "ui", "module": "portal"},
+    {"key": "profile_screen_time_total",     "ru": "Всего",                                               "en": "Total",                                      "ko": "전체", "kind": "ui", "module": "portal"},
+
+    # Phase 2: public landing page.
+    {"key": "landing_sign_up_title",         "ru": "Создать аккаунт",                                     "en": "Create account",                             "ko": "계정 만들기", "kind": "ui", "module": "portal"},
+    {"key": "landing_sign_up_text",          "ru": "Присоединяйтесь к Avalone — все инструменты под рукой.", "en": "Join Avalone — all your tools in one place.", "ko": "Avalone에 가입하세요 — 모든 도구가 한 곳에 있습니다.", "kind": "ui", "module": "portal"},
+    {"key": "landing_btn_register",          "ru": "Зарегистрироваться",                                  "en": "Sign up",                                    "ko": "회원가입", "kind": "ui", "module": "portal"},
+    {"key": "landing_btn_login",             "ru": "Войти",                                               "en": "Sign in",                                  "ko": "로그인", "kind": "ui", "module": "portal"},
 ]
 
 

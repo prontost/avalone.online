@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 
 from avalone_core import glossary_db as glossary
 from avalone_core.db import migrate as migrate_db
+from avalone_core.language_service import LanguageService
 from avalone_core.registry import AvaloneRegistry
 import avalone_core.ui
 from avalone_landing.config import settings
@@ -18,6 +19,7 @@ from avalone_landing.core import users
 from avalone_landing.core.user_service import UserService
 from avalone_landing.web.admin_router import router as admin_router
 from avalone_landing.web.api.admin import router as admin_api_router
+from avalone_landing.web.api.misc import router as misc_api_router
 from avalone_landing.web.auth import router as auth_router
 from avalone_landing.web.shell_context import render_shell_context
 
@@ -36,6 +38,7 @@ app = FastAPI(title="avalone.online")
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(admin_api_router)
+app.include_router(misc_api_router)
 BASE = Path(__file__).parent
 _templates_dir = BASE / "templates"
 _static_dir = BASE / "static"
@@ -81,6 +84,7 @@ def _no_cache(resp: Response) -> Response:
 
 def _render_shell(request: Request, current_app: str = "portal", app_nav=None, **extra):
     user = users.get_user(users.current())
+    lang = LanguageService().detect(request)
     return render_shell_context(
         templates,
         request,
@@ -88,6 +92,7 @@ def _render_shell(request: Request, current_app: str = "portal", app_nav=None, *
         current_app=current_app,
         app_nav=app_nav or [],
         build_id=BUILD_ID,
+        lang=lang,
         **extra,
     )
 
@@ -95,7 +100,7 @@ def _render_shell(request: Request, current_app: str = "portal", app_nav=None, *
 @app.get("/", response_class=HTMLResponse)
 async def landing(request: Request):
     ctx = _render_shell(request, current_app="portal")
-    ctx["branch_list"] = AvaloneRegistry.for_shell("ru")
+    ctx["branch_list"] = AvaloneRegistry.for_shell(ctx.get("lang", "ru"))
     return _no_cache(
         templates.TemplateResponse(
             request,
@@ -124,6 +129,46 @@ async def manifest():
         "categories": ["productivity", "utilities", "lifestyle"],
         "lang": "ru",
     }
+
+
+def _migrate_mail_settings() -> None:
+    """Move SMTP/mail settings from legacy module tables to avalone_global_settings."""
+    from avalone_core.database import Database
+
+    keys = (
+        "smtp_host",
+        "smtp_port",
+        "smtp_user",
+        "smtp_password",
+        "smtp_use_tls",
+        "mail_from",
+        "mail_from_name",
+    )
+    with Database.shared().connection() as con:
+        existing = {
+            r["key"] for r in con.execute("SELECT key FROM avalone_global_settings").fetchall()
+        }
+        for source_table in ("money_global_settings", "work_global_settings"):
+            if not con.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (source_table,)
+            ).fetchone():
+                continue
+            for key in keys:
+                if key in existing:
+                    continue
+                row = con.execute(
+                    f"SELECT value FROM {source_table} WHERE key=?", (key,)
+                ).fetchone()
+                if row and row["value"]:
+                    con.execute(
+                        "INSERT INTO avalone_global_settings (key, value) VALUES (?, ?)",
+                        (key, row["value"]),
+                    )
+                    existing.add(key)
+        con.commit()
+
+
+_migrate_mail_settings()
 
 
 @app.get("/icon.svg")

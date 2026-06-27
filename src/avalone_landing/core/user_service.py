@@ -6,6 +6,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from avalone_core.database import Service
+from avalone_core.referral_service import ReferralService
 
 from avalone_landing.core.models import User
 from avalone_landing.core.user_repository import UserRepository
@@ -39,10 +40,17 @@ class UserService(Service):
     def get_user(self, user_id: int) -> User | None:
         return self._repo.get_by_id(user_id)
 
-    def create_user(self, login: str, password: str, email: str = "") -> int:
+    def create_user(
+        self, login: str, password: str, email: str = "", referral_code: str | None = None
+    ) -> int:
         if len(password) < self._MIN_PASSWORD_LENGTH:
             raise ValueError("password too short")
-        return self._repo.create(login, password, email)
+        user_id = self._repo.create(login, password, email)
+        if referral_code:
+            ReferralService(user_repo=self._repo).apply_referral(
+                user_id, referral_code, None
+            )
+        return user_id
 
     def login_taken(self, login: str) -> bool:
         return self._repo.get_by_login_or_email(login) is not None

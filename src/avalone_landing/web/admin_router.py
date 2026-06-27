@@ -45,6 +45,9 @@ def _admin_shell_context(
     active_path: str = "/admin",
     **extra: object,
 ) -> dict:
+    from avalone_core.language_service import LanguageService
+
+    lang = LanguageService().detect(request)
     nav = []
     for section in _ADMIN_NAV:
         entries = []
@@ -58,6 +61,7 @@ def _admin_shell_context(
         current_app="portal",
         app_nav=nav,
         build_id=_ui_build_id(),
+        lang=lang,
         **extra,
     )
 

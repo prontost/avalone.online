@@ -9,6 +9,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.templating import Jinja2Templates
 
 from avalone_core import glossary_db as glossary
+from avalone_core.device_service import DeviceService
+from avalone_core.referral_service import ReferralService
 from avalone_core.registry import AvaloneRegistry
 from avalone_core.ui import build_id as ui_build_id
 import avalone_core.ui
@@ -41,6 +43,9 @@ def _client_ip(request: Request) -> str:
 
 
 def _shell_context(request: Request, user: dict | None) -> dict:
+    from avalone_core.language_service import LanguageService
+
+    lang = LanguageService().detect(request)
     return render_shell_context(
         templates,
         request,
@@ -48,6 +53,7 @@ def _shell_context(request: Request, user: dict | None) -> dict:
         current_app="portal",
         app_nav=[],
         build_id=ui_build_id(),
+        lang=lang,
     )
 
 
@@ -221,7 +227,10 @@ async def register_page(
 ):
     if user is not None or auth_service.user_id_of(request):
         return RedirectResponse("/", status_code=303)
-    return templates.TemplateResponse(request, "register.html", _anon_shell_context(request))
+    prefilled_ref = request.query_params.get("ref", "").strip()
+    return templates.TemplateResponse(
+        request, "register.html", _anon_shell_context(request, prefilled_ref=prefilled_ref)
+    )
 
 
 @router.post("/register")
@@ -252,7 +261,7 @@ async def register(
         )
 
     try:
-        user_id = user_service.create_user(login_field, pw)
+        user_id = user_service.create_user(login_field, pw, referral_code=invite)
     except ValueError as e:
         return templates.TemplateResponse(
             request, "register.html", _anon_shell_context(request, error=str(e)), status_code=400
@@ -322,7 +331,15 @@ async def profile_page(
     u = user_service.get_user(user.id)
     if not u:
         return RedirectResponse("/login", status_code=303)
-    ctx = _shell_context(request, {"id": u.id, "login": u.login, "email": u.email, "created_at": u.created_at})
+    referral = ReferralService().stats(u.id)
+    screen_time = DeviceService().screen_time_summary(u.id)
+    ctx = _shell_context(
+        request,
+        {"id": u.id, "login": u.login, "email": u.email, "created_at": u.created_at,
+         "is_admin": u.is_admin, "is_platform_admin": getattr(u, "is_platform_admin", False)},
+    )
+    ctx["referral"] = referral
+    ctx["screen_time"] = screen_time
     return templates.TemplateResponse(request, "profile.html", ctx)
 
 
@@ -343,7 +360,8 @@ async def change_password(
         u = user_service.get_user(user.id)
         ctx = _shell_context(
             request,
-            {"id": u.id, "login": u.login, "email": u.email, "created_at": u.created_at} if u else None,
+            {"id": u.id, "login": u.login, "email": u.email, "created_at": u.created_at,
+             "is_admin": u.is_admin, "is_platform_admin": getattr(u, "is_platform_admin", False)} if u else None,
         )
         ctx.update(extra)
         return ctx

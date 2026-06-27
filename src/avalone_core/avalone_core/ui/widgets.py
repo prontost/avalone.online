@@ -72,6 +72,7 @@ class Shell(Widget):
     app_nav: List[Any] = field(default_factory=list)
     breadcrumbs: List[Any] = field(default_factory=list)
     notifications_count: int = 0
+    lang: str = "ru"
 
     def __post_init__(self):
         def _branch_id(b):
@@ -113,6 +114,7 @@ class Shell(Widget):
             "profile_menu": self.profile_menu,
             "bottom_nav": self.bottom_nav,
             "nav_sidebar": self.nav_sidebar,
+            "lang": self.lang,
         }
 
 

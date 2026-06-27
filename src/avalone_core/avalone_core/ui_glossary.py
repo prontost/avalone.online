@@ -161,12 +161,20 @@ PREFIX: list[tuple[str, str]] = [
     ("quick_",  "Label for a quick-action tile on the portal home."),
     ("nav_",    "Navigation label (top bar, bottom tab, or sidebar)."),
     ("teaser_", "Text in the 'more modules planned' teaser section on the portal."),
+    ("landing_", "Text on the public portal landing page."),
     ("shell_",  "Text in the shared Avalone shell header/menu/search overlay."),
     ("auth_",   "Text in the authentication flows (login, register, profile)."),
     ("profile_","Text in the user profile screen."),
     ("manifest_", "Field in the PWA web-app manifest."),
     ("admin_",  "Label, button, or message in the platform admin dashboard."),
     ("error_",  "Error message returned by the backend or shown to the user."),
+
+    # Phase 2: referral, screen time, devices.
+    ("ref_",     "Text in the referral / invite-friends screen."),
+    ("screen_",  "Text in the screen-time / usage analytics screen."),
+    ("device_",  "Text in the device management screen."),
+    ("share_",   "Text in the system share / invite-friends dialog."),
+    ("toast_",   "Short toast/snackbar confirmation message."),
 ]
 
 GENERIC = (

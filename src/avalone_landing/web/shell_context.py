@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
 
+from avalone_core.language_service import LanguageService
 from avalone_core.registry import AvaloneRegistry
 from avalone_core.ui import Shell
 import avalone_core.ui
@@ -22,19 +23,22 @@ def render_shell_context(
     current_app: str = "portal",
     app_nav: list[dict] | None = None,
     build_id: str = "",
+    lang: str = "ru",
     **extra: object,
 ) -> dict:
     """Return the context dict used by shell-based templates."""
-    branches = AvaloneRegistry.for_shell("ru")
+    branches = AvaloneRegistry.for_shell(lang)
     shell = Shell(
         current_app=current_app,
         user=user,
         branches=branches,
         app_nav=app_nav or [],
+        lang=lang,
         **extra,
     )
     return {
         "build_id": build_id,
         "user": user,
+        "lang": lang,
         "shell_html": shell.render(templates.env, request),
     }
