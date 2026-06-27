@@ -33,6 +33,7 @@ def main() -> None:
         print(">>> no tests")
 
     run([sys.executable, str(ROOT / "scripts" / "check_glossary.py")])
+    run([sys.executable, str(ROOT / "scripts" / "check_hardcoded.py")])
 
     # Start server briefly and hit healthz
     proc = subprocess.Popen(
