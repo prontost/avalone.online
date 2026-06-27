@@ -19,6 +19,7 @@ BASE = Path(__file__).parent
 _UI_DIR = Path(avalone_core.ui.__file__).parent
 templates = Jinja2Templates(directory=[str(BASE / "templates"), str(_UI_DIR / "templates")])
 templates.env.globals["t"] = glossary.t
+t = glossary.t
 templates.env.globals["i18n_js"] = glossary.i18n_js
 templates.env.globals["registry"] = AvaloneRegistry
 

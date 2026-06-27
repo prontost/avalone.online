@@ -17,6 +17,7 @@ from avalone_landing.config import settings
 from avalone_landing.core import users
 from avalone_landing.web.auth import SESSION_COOKIE, _signer, router as auth_router
 
+t = glossary.t
 migrate_db()
 app = FastAPI(title="avalone.online")
 app.include_router(auth_router)
