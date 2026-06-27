@@ -11,6 +11,7 @@ class User:
     login: str
     email: str
     created_at: str
+    name: str = ""
     email_verified: bool = False
     is_admin: bool = False
     roles: list[str] = field(default_factory=list)

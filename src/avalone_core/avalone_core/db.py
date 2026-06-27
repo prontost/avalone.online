@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS users (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     login          TEXT UNIQUE NOT NULL,
     pwhash         TEXT NOT NULL,
+    name           TEXT DEFAULT '',
     email          TEXT DEFAULT '',
     email_verified INTEGER DEFAULT 0,
     verify_code    TEXT DEFAULT '',

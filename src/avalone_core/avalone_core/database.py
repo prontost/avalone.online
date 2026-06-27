@@ -76,9 +76,18 @@ class Database:
             con.executescript(SCHEMA)
             con.commit()
 
+        self._ensure_user_name_column()
+
         from avalone_core import glossary_db
 
         glossary_db.migrate()
+
+    def _ensure_user_name_column(self) -> None:
+        with self.connection() as con:
+            cols = [row[1] for row in con.execute("PRAGMA table_info(users)").fetchall()]
+            if "name" not in cols:
+                con.execute("ALTER TABLE users ADD COLUMN name TEXT DEFAULT ''")
+                con.commit()
 
     def __enter__(self) -> sqlite3.Connection:
         self._conn = self.connection()

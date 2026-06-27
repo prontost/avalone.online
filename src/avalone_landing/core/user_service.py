@@ -42,6 +42,24 @@ class UserService(Service):
     def get_user(self, user_id: int) -> User | None:
         return self._repo.get_by_id(user_id)
 
+    def update_name(self, user_id: int, name: str) -> None:
+        self._repo.update_name(user_id, name)
+
+    def update_email(self, user_id: int, email: str) -> None:
+        self._repo.update_email(user_id, email)
+
+    def generate_email_verification_code(self, user_id: int) -> str:
+        code = "".join(secrets.choice("0123456789") for _ in range(6))
+        expires = datetime.now(timezone.utc) + timedelta(minutes=15)
+        self._repo.set_verify_code(user_id, code, expires)
+        return code
+
+    def verify_email_code(self, user_id: int, code: str) -> bool:
+        if self._repo.check_verify_code(user_id, code):
+            self._repo.mark_email_verified(user_id)
+            return True
+        return False
+
     def create_user(
         self, login: str, password: str, email: str = "", referral_code: str | None = None
     ) -> int:

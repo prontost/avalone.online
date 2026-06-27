@@ -8,10 +8,51 @@
     <h1 class="avalone-page-title">{{ t('profile_title', lang=lang) }}</h1>
   </header>
 
+  {% if error %}<div class="avalone-alert avalone-alert-danger mb-3">{{ error }}</div>{% endif %}
+  {% if success %}<div class="avalone-alert avalone-alert-success mb-3">{{ success }}</div>{% endif %}
+
   <div class="avalone-card avalone-text-center">
-    <div class="avalone-avatar-lg">{{ (user.login or 'G')[0].upper() }}</div>
-    <h2 class="mb-1">{{ user.login }}</h2>
+    <div class="avalone-avatar-lg">{{ ((user.name or user.login) or 'G')[0].upper() }}</div>
+    <h2 class="mb-1">{{ user.name or user.login }}</h2>
     <p class="text-muted mb-0">{{ user.email or t('profile_email_missing', lang=lang) }}</p>
+    {% if user.email %}
+    <p class="mb-0">
+      {% if user.email_verified %}
+      <span class="avalone-badge avalone-badge-green">{{ t('profile_email_verified', lang=lang) }}</span>
+      {% else %}
+      <span class="avalone-badge avalone-badge-amber">{{ t('profile_email_unverified', lang=lang) }}</span>
+      {% endif %}
+    </p>
+    {% endif %}
+  </div>
+
+  <div class="avalone-card">
+    <h3 class="mt-0">{{ t('profile_section_identity', lang=lang) }}</h3>
+
+    <form class="avalone-stack mb-4" method="post" action="/profile/name">
+      <label class="avalone-label">{{ t('profile_name_label', lang=lang) }}
+        <input class="avalone-input" type="text" name="name" value="{{ user.name }}" autocomplete="name" placeholder="{{ t('profile_name_placeholder', lang=lang) }}">
+      </label>
+      <button class="avalone-btn avalone-btn-secondary" type="submit">{{ t('profile_btn_save_name', lang=lang) }}</button>
+    </form>
+
+    <form class="avalone-stack" method="post" action="/profile/email">
+      <label class="avalone-label">{{ t('profile_email_label', lang=lang) }}
+        <input class="avalone-input" type="email" name="email" value="{{ user.email }}" required autocomplete="email" placeholder="{{ t('profile_email_placeholder', lang=lang) }}">
+      </label>
+      <button class="avalone-btn avalone-btn-secondary" type="submit">
+        {% if user.email and not user.email_verified %}{{ t('profile_btn_send_code', lang=lang) }}{% else %}{{ t('profile_btn_change_email', lang=lang) }}{% endif %}
+      </button>
+    </form>
+
+    {% if pending_email_verification or (user.email and not user.email_verified) %}
+    <form class="avalone-stack mt-4" method="post" action="/profile/verify-email">
+      <label class="avalone-label">{{ t('profile_verify_code_label', lang=lang) }}
+        <input class="avalone-input" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" name="code" required autocomplete="one-time-code" placeholder="000000">
+      </label>
+      <button class="avalone-btn avalone-btn-primary" type="submit">{{ t('profile_btn_verify', lang=lang) }}</button>
+    </form>
+    {% endif %}
   </div>
 
   <div class="avalone-card">
@@ -28,8 +69,6 @@
 
   <div class="avalone-card">
     <h3 class="mt-0">{{ t('profile_section_security', lang=lang) }}</h3>
-    {% if error %}<div class="avalone-alert avalone-alert-danger mb-3">{{ error }}</div>{% endif %}
-    {% if success %}<div class="avalone-alert avalone-alert-success mb-3">{{ success }}</div>{% endif %}
     <form class="avalone-stack" method="post" action="/profile/password">
       <label class="avalone-label">{{ t('profile_label_current_password', lang=lang) }}
         <input class="avalone-input" type="password" name="current_password" required autocomplete="current-password">

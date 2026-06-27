@@ -37,6 +37,20 @@ templates.env.globals["i18n_js"] = glossary.i18n_js
 templates.env.globals["registry"] = AvaloneRegistry
 
 
+def _profile_context(
+    request: Request, user_service: UserService, user: User, **extra: object
+) -> dict:
+    u = user_service.get_user(user.id)
+    ctx = _shell_context(
+        request,
+        {"id": u.id, "login": u.login, "name": u.name, "email": u.email, "created_at": u.created_at,
+         "is_admin": u.is_admin, "email_verified": u.email_verified} if u else None,
+    )
+    ctx["screen_time"] = DeviceService().screen_time_summary(user.id)
+    ctx.update(extra)
+    return ctx
+
+
 def _client_ip(request: Request) -> str:
     fwd = request.headers.get("x-forwarded-for", "")
     return fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "?")
@@ -297,7 +311,9 @@ async def auth_me(
     return {
         "id": user.id,
         "login": user.login,
+        "name": user.name,
         "email": user.email,
+        "email_verified": user.email_verified,
         "created_at": user.created_at,
     }
 
@@ -334,8 +350,8 @@ async def profile_page(
     screen_time = DeviceService().screen_time_summary(u.id)
     ctx = _shell_context(
         request,
-        {"id": u.id, "login": u.login, "email": u.email, "created_at": u.created_at,
-         "is_admin": u.is_admin},
+        {"id": u.id, "login": u.login, "name": u.name, "email": u.email, "created_at": u.created_at,
+         "is_admin": u.is_admin, "email_verified": u.email_verified},
     )
     ctx["screen_time"] = screen_time
     return templates.TemplateResponse(request, "profile.html", ctx)
@@ -354,30 +370,88 @@ async def change_password(
     new_pw = str(form.get("new_password", ""))
     new_pw2 = str(form.get("new_password2", ""))
 
-    def _profile_ctx(**extra):
-        u = user_service.get_user(user.id)
-        ctx = _shell_context(
-            request,
-            {"id": u.id, "login": u.login, "email": u.email, "created_at": u.created_at,
-             "is_admin": u.is_admin} if u else None,
-        )
-        ctx.update(extra)
-        return ctx
-
     if new_pw != new_pw2:
         return templates.TemplateResponse(
-            request, "profile.html", _profile_ctx(error=t("profile_password_mismatch")), status_code=400
+            request, "profile.html", _profile_context(request, user_service, user, error=t("profile_password_mismatch")), status_code=400
         )
     try:
         ok = user_service.change_password(user.id, current, new_pw)
     except ValueError as e:
         return templates.TemplateResponse(
-            request, "profile.html", _profile_ctx(error=str(e)), status_code=400
+            request, "profile.html", _profile_context(request, user_service, user, error=str(e)), status_code=400
         )
     if not ok:
         return templates.TemplateResponse(
-            request, "profile.html", _profile_ctx(error=t("profile_current_password_wrong")), status_code=400
+            request, "profile.html", _profile_context(request, user_service, user, error=t("profile_current_password_wrong")), status_code=400
         )
     return templates.TemplateResponse(
-        request, "profile.html", _profile_ctx(success=t("profile_password_changed"))
+        request, "profile.html", _profile_context(request, user_service, user, success=t("profile_password_changed"))
+    )
+
+
+@router.post("/profile/name")
+async def update_profile_name(
+    request: Request,
+    user: User = Depends(current_user),
+    user_service: UserService = Depends(get_user_service),
+):
+    if user is None:
+        return JSONResponse({"error": t("error_unauthorized")}, status_code=401)
+    form = await request.form()
+    name = str(form.get("name", "")).strip()
+    user_service.update_name(user.id, name)
+    return RedirectResponse("/profile", status_code=303)
+
+
+@router.post("/profile/email")
+async def update_profile_email(
+    request: Request,
+    user: User = Depends(current_user),
+    user_service: UserService = Depends(get_user_service),
+    mail_service: MailService = Depends(get_mail_service),
+):
+    if user is None:
+        return JSONResponse({"error": t("error_unauthorized")}, status_code=401)
+    form = await request.form()
+    email = str(form.get("email", "")).strip().lower()
+    if not email or "@" not in email:
+        return templates.TemplateResponse(
+            request, "profile.html",
+            _profile_context(request, user_service, user, error=t("profile_email_invalid")), status_code=400
+        )
+    user_service.update_email(user.id, email)
+    code = user_service.generate_email_verification_code(user.id)
+    subject = t("profile_verify_email_subject")
+    body = t("profile_verify_email_body").format(code=code)
+    try:
+        mail_service.send_email(email, subject, body)
+    except Exception as exc:
+        return templates.TemplateResponse(
+            request, "profile.html",
+            _profile_context(request, user_service, user, error=t("profile_verify_email_send_failed").format(error=str(exc))),
+            status_code=500,
+        )
+    return templates.TemplateResponse(
+        request, "profile.html",
+        _profile_context(request, user_service, user, success=t("profile_verify_email_sent"), pending_email_verification=True)
+    )
+
+
+@router.post("/profile/verify-email")
+async def verify_profile_email(
+    request: Request,
+    user: User = Depends(current_user),
+    user_service: UserService = Depends(get_user_service),
+):
+    if user is None:
+        return JSONResponse({"error": t("error_unauthorized")}, status_code=401)
+    form = await request.form()
+    code = str(form.get("code", "")).strip()
+    if user_service.verify_email_code(user.id, code):
+        return templates.TemplateResponse(
+            request, "profile.html", _profile_context(request, user_service, user, success=t("profile_email_verified_success"))
+        )
+    return templates.TemplateResponse(
+        request, "profile.html",
+        _profile_context(request, user_service, user, error=t("profile_verify_email_invalid")), status_code=400
     )

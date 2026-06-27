@@ -72,6 +72,7 @@ class UserRepository(Repository):
             login=row["login"],
             email=row["email"] or "",
             created_at=row["created_at"],
+            name=row["name"] or "",
             email_verified=bool(row["email_verified"]),
         )
         user.roles = self._roles_for(user.id)
@@ -88,7 +89,7 @@ class UserRepository(Repository):
     def get_by_id(self, user_id: int) -> User | None:
         with self._conn() as con:
             row = con.execute(
-                "SELECT id, login, email, email_verified, referral_code, referred_by, created_at "
+                "SELECT id, login, name, email, email_verified, referral_code, referred_by, created_at "
                 "FROM users WHERE id = ?",
                 (user_id,),
             ).fetchone()
@@ -100,7 +101,7 @@ class UserRepository(Repository):
         value = value.strip().lower()
         with self._conn() as con:
             row = con.execute(
-                "SELECT id, login, email, email_verified, referral_code, referred_by, created_at "
+                "SELECT id, login, name, email, email_verified, referral_code, referred_by, created_at "
                 "FROM users WHERE login = ? OR email = ?",
                 (value, value),
             ).fetchone()
@@ -128,6 +129,48 @@ class UserRepository(Repository):
                 (email.strip().lower(), user_id),
             )
 
+    def update_name(self, user_id: int, name: str) -> None:
+        with self._conn() as con:
+            con.execute(
+                "UPDATE users SET name = ? WHERE id = ?",
+                (name.strip(), user_id),
+            )
+
+    def set_verify_code(self, user_id: int, code: str, expires_at: datetime) -> None:
+        expires = expires_at.isoformat(timespec="seconds")
+        with self._conn() as con:
+            con.execute(
+                "UPDATE users SET verify_code = ?, verify_sent = ? WHERE id = ?",
+                (code, expires, user_id),
+            )
+
+    def check_verify_code(self, user_id: int, code: str) -> bool:
+        with self._conn() as con:
+            row = con.execute(
+                "SELECT verify_code, verify_sent FROM users WHERE id = ?",
+                (user_id,),
+            ).fetchone()
+        if not row or not row["verify_code"]:
+            return False
+        if row["verify_code"] != code.strip():
+            return False
+        expires = row["verify_sent"]
+        if not expires:
+            return False
+        try:
+            if datetime.now(timezone.utc) > datetime.fromisoformat(expires):
+                return False
+        except Exception:
+            return False
+        return True
+
+    def mark_email_verified(self, user_id: int) -> None:
+        with self._conn() as con:
+            con.execute(
+                "UPDATE users SET email_verified = 1, verify_code = '', verify_sent = '' WHERE id = ?",
+                (user_id,),
+            )
+
     def set_password_hash(self, user_id: int, pwhash: str) -> None:
         with self._conn() as con:
             con.execute("UPDATE users SET pwhash = ? WHERE id = ?", (pwhash, user_id))
@@ -146,7 +189,7 @@ class UserRepository(Repository):
             return None
         with self._conn() as con:
             row = con.execute(
-                "SELECT id, login, email, email_verified, reset_expires, created_at "
+                "SELECT id, login, name, email, email_verified, reset_expires, created_at "
                 "FROM users WHERE reset_token = ? AND reset_token <> ''",
                 (token,),
             ).fetchone()
