@@ -13,15 +13,47 @@ from avalone_core.database import Service
 from avalone_landing.config import Settings, settings
 
 
+def _global_mail_settings() -> dict[str, str]:
+    """Load mail-related overrides stored in the admin settings table."""
+    try:
+        from avalone_core.database import Database
+
+        with Database.shared().connection() as con:
+            rows = con.execute(
+                "SELECT key, value FROM avalone_global_settings "
+                "WHERE key LIKE 'smtp%' OR key LIKE 'mail%'"
+            ).fetchall()
+        return {r["key"]: r["value"] for r in rows}
+    except Exception:
+        return {}
+
+
 class MailService(Service):
-    """Send plain-text email via SMTP relay or local sendmail fallback."""
+    """Send plain-text email via SMTP relay or local sendmail fallback.
+
+    Server settings saved in the admin panel override environment defaults,
+    so password-reset and test emails use the same configuration.
+    """
 
     def __init__(self, cfg: Settings | None = None) -> None:
         self._cfg = cfg or settings()
 
+    def _effective_config(self) -> dict[str, Any]:
+        cfg = self._cfg.model_dump()
+        cfg.update(_global_mail_settings())
+        cfg["smtp_port"] = int(cfg.get("smtp_port", 587))
+        cfg["smtp_use_tls"] = str(cfg.get("smtp_use_tls", "true")).lower() not in (
+            "",
+            "0",
+            "false",
+            "no",
+            "off",
+        )
+        return cfg
+
     def send_email(self, to: str, subject: str, body: str) -> None:
         """Send a plain-text email. Raises on failure."""
-        self.send_email_with_config(to, subject, body, cfg=self._cfg.model_dump())
+        self.send_email_with_config(to, subject, body, cfg=self._effective_config())
 
     def send_email_with_config(
         self,
