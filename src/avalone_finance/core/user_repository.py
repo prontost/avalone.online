@@ -1,7 +1,7 @@
 """User data access for Counta.
 
 This repository owns the `users` table in the unified Avalone DB.
-Admin checks are delegated to the portal RBAC service (`finance:admin`).
+Finance features are available to every user by default; admin checks are delegated to the portal `admin` role.
 It is intentionally decoupled from the request-scoped tenant context; pass
 `tenant_id` explicitly from `TenantService`.
 """

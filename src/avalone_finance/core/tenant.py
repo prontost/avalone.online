@@ -2,8 +2,9 @@
 
 Данные пользователей теперь живут в единой БД Avalone (`avalone_core.db`).
 Counta работает с таблицей `users` напрямую; `tenant_id` совпадает
-с `avalone` user_id. Права администратора Counta проверяются через
-RBAC-сервис портала (разрешение `finance:admin`).
+с `avalone` user_id. Финансовый функционал доступен любому пользователю
+по умолчанию; административные права в модуле делегированы портальной роли
+`admin`.
 
 Все функции модуля оставлены для обратной совместимости и делегируют методам
 единого инстанса `TenantService`.
@@ -117,11 +118,11 @@ class TenantService(Service):
 
     def add_admin(self, user_id: int) -> None:
         current = set(self._role_service.roles_for(user_id))
-        current.add("finance_manager")
+        current.add("admin")
         self._role_service.assign_roles(user_id, list(current))
 
     def remove_admin(self, user_id: int) -> None:
-        current = [r for r in self._role_service.roles_for(user_id) if r != "finance_manager"]
+        current = [r for r in self._role_service.roles_for(user_id) if r != "admin"]
         self._role_service.assign_roles(user_id, current)
 
 

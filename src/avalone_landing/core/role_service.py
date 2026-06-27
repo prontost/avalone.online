@@ -14,8 +14,9 @@ from avalone_core.database import Database, Repository, Service
 
 
 _DEFAULT_ROLES: dict[str, list[str]] = {
-    "user": ["finance:read"],
-    "finance_manager": ["finance:read", "finance:write", "finance:admin"],
+    # Day-to-day finance features are available to every user by default.
+    # Finance admin panel/settings stay limited to portal admins.
+    "user": ["finance:read", "finance:write"],
     "admin": [
         "finance:read",
         "finance:write",
@@ -25,6 +26,8 @@ _DEFAULT_ROLES: dict[str, list[str]] = {
     ],
     "owner": ["admin:full"],
 }
+
+_OBSOLETE_ROLES: set[str] = {"finance_manager"}
 
 _ALL_PERMISSIONS: set[str] = set().union(*_DEFAULT_ROLES.values()) - {"admin:full"}
 
@@ -68,6 +71,37 @@ class RoleRepository(Repository):
                     "INSERT OR IGNORE INTO roles (name, permissions) VALUES (?, ?)",
                     (name, json.dumps(perms, ensure_ascii=False)),
                 )
+        self._cleanup_obsolete_roles()
+
+    def _cleanup_obsolete_roles(self) -> None:
+        """Remove obsolete roles and migrate their users to the default user role."""
+        with self._conn() as con:
+            user_role = con.execute(
+                "SELECT id FROM roles WHERE name = ?", ("user",)
+            ).fetchone()
+            if not user_role:
+                return
+            user_role_id = user_role["id"]
+
+            for obsolete in _OBSOLETE_ROLES:
+                row = con.execute(
+                    "SELECT id FROM roles WHERE name = ?", (obsolete,)
+                ).fetchone()
+                if not row:
+                    continue
+                obsolete_id = row["id"]
+
+                # Make sure former finance_manager users keep the default user role.
+                con.execute(
+                    "INSERT OR IGNORE INTO user_roles (user_id, role_id) "
+                    "SELECT user_id, ? FROM user_roles WHERE role_id = ?",
+                    (user_role_id, obsolete_id),
+                )
+                con.execute(
+                    "DELETE FROM user_roles WHERE role_id = ?", (obsolete_id,)
+                )
+                con.execute("DELETE FROM roles WHERE id = ?", (obsolete_id,))
+            con.commit()
 
     def list_roles(self) -> list[dict[str, Any]]:
         self.ensure_defaults()

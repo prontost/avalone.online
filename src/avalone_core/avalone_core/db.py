@@ -365,8 +365,9 @@ def _migrate_admins_to_roles() -> None:
     from avalone_core.database import Database
 
     default_roles = {
-        "user": ["finance:read"],
-        "finance_manager": ["finance:read", "finance:write", "finance:admin"],
+        # Day-to-day finance features are available to every user by default.
+        # Finance admin panel/settings stay limited to portal admins.
+        "user": ["finance:read", "finance:write"],
         "admin": [
             "finance:read",
             "finance:write",
@@ -376,7 +377,7 @@ def _migrate_admins_to_roles() -> None:
         ],
         "owner": ["admin:full"],
     }
-    mapping = {"portal": "admin", "money": "finance_manager"}
+    mapping = {"portal": "admin", "money": "admin"}
 
     con = Database.shared().connection()
     try:
@@ -394,8 +395,8 @@ def _migrate_admins_to_roles() -> None:
 
         role_ids = {
             row["name"]: row["id"]
-            for row in con.execute("SELECT id, name FROM roles WHERE name IN (?, ?)",
-                                   ("admin", "finance_manager"))
+            for row in con.execute("SELECT id, name FROM roles WHERE name = ?",
+                                   ("admin",))
         }
 
         rows = con.execute("SELECT user_id, module FROM admins").fetchall()
