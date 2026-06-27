@@ -1,30 +1,17 @@
-<!doctype html>
-<html lang="ru">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="dark light">
-<meta name="theme-color" content="#0a0c10">
-<title>Профиль — Avalone</title>
-<link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/icon-192.png">
-<link rel="icon" type="image/png" href="/icon-192.png">
+{% extends "avalone_base.html" %}
+
+{% block title %}Профиль — Avalone{% endblock %}
+
+{% block extra_head %}
 <style>
 .profile-avatar{width:72px;height:72px;border-radius:50%;background:var(--accent-bg);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:600;margin:0 auto 16px}
 </style>
-</head>
-<body>
-{% from 'shell.html' import avalone_shell %}
-{% call avalone_shell(
-    current_app='portal',
-    user=user,
-    branches=registry.for_shell('ru'),
-    app_nav=[]
-) %}
+{% endblock %}
 
+{% block content %}
 <h1 class="avalone-page-title">Профиль</h1>
 <div class="avalone-card" style="text-align:center">
-  <div class="profile-avatar" style="margin:0 auto 16px">{{ (user.login or 'G')[0].upper() }}</div>
+  <div class="profile-avatar">{{ (user.login or 'G')[0].upper() }}</div>
   <h2 style="margin:0 0 4px">{{ user.login }}</h2>
   <p class="text-muted" style="margin:0">{{ user.email or 'Email не указан' }}</p>
 </div>
@@ -51,7 +38,4 @@
   <h3 class="mt-0">Сессия</h3>
   <a href="/logout" class="avalone-btn avalone-btn-danger">Выйти</a>
 </div>
-
-{% endcall %}
-</body>
-</html>
+{% endblock %}

@@ -1,0 +1,10 @@
+<header class="avalone-page-header">
+  <h1 class="avalone-page-title">{{ widget.title }}</h1>
+  {% if widget.actions %}
+  <div class="avalone-page-header__actions">
+    {% for action in widget.actions %}
+    {{ action|safe }}
+    {% endfor %}
+  </div>
+  {% endif %}
+</header>

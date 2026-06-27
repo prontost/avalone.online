@@ -1,12 +1,4 @@
-{# Avalone shared shell macro #}
-{% macro avalone_shell(current_app='portal', user=None, branches=[], app_nav=[], breadcrumbs=[], notifications_count=0) %}
-<link rel="stylesheet" href="/static/avalone-shell.css?v=8">
-{% set active_branch = branches | selectattr('id', 'eq', current_app) | first %}
-{% if not active_branch %}
-  {% set active_branch = {'id':'portal','name':'Avalone','icon':'A','url':'https://avalone.online'} %}
-{% endif %}
-
-<div class="avalone-shell {% if not app_nav %}no-sidebar{% endif %}">
+<div class="avalone-shell {% if app_nav %}has-sidebar{% else %}no-sidebar{% endif %}">
   <header class="avalone-header">
     <a class="avalone-logo" href="https://avalone.online/" title="Avalone">
       <div class="avalone-logo-mark" aria-hidden="true">A</div>
@@ -23,13 +15,13 @@
         {% for b in branches %}
         {% if b.status == 'active' %}
         <a class="avalone-app-switcher__item {% if b.id == current_app %}active{% endif %}" href="{{ b.url }}">
-          <span>{{ b.icon or '◈' }}</span>
+          <span>{{ b.icon or 'A' }}</span>
           <span>{{ b.name }}</span>
         </a>
         {% else %}
         {% set planned_label = 'В разработке' if b.status == 'in_dev' else 'В планах' %}
         <span class="avalone-app-switcher__item coming" title="{{ b.name }} — {{ planned_label }}">
-          <span>{{ b.icon or '◈' }}</span>
+          <span>{{ b.icon or 'A' }}</span>
           <span>{{ b.name }} ({{ planned_label }})</span>
         </span>
         {% endif %}
@@ -93,20 +85,6 @@
     {% endfor %}
   </aside>
   {% endif %}
-
-  <main class="avalone-main">
-    {% if breadcrumbs %}
-    <nav class="avalone-breadcrumbs">
-      <a href="https://avalone.online/">Avalone</a>
-      {% for crumb in breadcrumbs %}
-      <span>/</span>
-      {% if crumb.url %}<a href="{{ crumb.url }}">{{ crumb.name }}</a>{% else %}<span>{{ crumb.name }}</span>{% endif %}
-      {% endfor %}
-    </nav>
-    {% endif %}
-
-    {{ caller() }}
-  </main>
 </div>
 
 {% if app_nav %}
@@ -121,6 +99,3 @@
   {% endfor %}
 </nav>
 {% endif %}
-
-<script src="/static/avalone-shell.js?v=4" defer></script>
-{% endmacro %}

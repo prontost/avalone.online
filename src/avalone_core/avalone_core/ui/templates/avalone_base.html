@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="{{ lang|default('ru') }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0a0c10">
+  <title>{% block title %}Avalone{% endblock %}</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="icon" type="image/png" href="/icon-192.png">
+  <script>
+  (function(){try{var t=localStorage.getItem('avalone_theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;}catch(e){}})();
+  </script>
+  {% block extra_head %}{% endblock %}
+  <link rel="stylesheet" href="/static/ui/avalone-shell.css?v={{ build_id }}">
+</head>
+<body>
+  {{ shell_html|safe }}
+
+  <main class="avalone-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="/static/ui/avalone-shell.js?v={{ build_id }}" defer></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

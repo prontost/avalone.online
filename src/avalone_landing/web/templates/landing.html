@@ -1,16 +1,10 @@
-<!doctype html>
-<html lang="ru">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="dark light">
-<meta name="theme-color" content="#0a0c10">
+{% extends "avalone_base.html" %}
+
+{% block title %}{{ t('brand') }}{% endblock %}
+
+{% block extra_head %}
 <meta name="description" content="{{ t('brand_tagline') }}">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<title>{{ t('brand') }}</title>
-<link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/icon-192.png">
-<link rel="icon" type="image/png" href="/icon-192.png">
 <style>
 :root{
   --bg:#0a0c10;
@@ -170,16 +164,9 @@ body::before{
 /* Footer */
 footer{margin-top:40px;text-align:center;color:var(--muted);font-size:12px}
 </style>
-</head>
-<body>
-{% from 'shell.html' import avalone_shell %}
-{% set branch_list = registry.for_shell('ru') %}
-{% call avalone_shell(
-    current_app='portal',
-    user=user,
-    branches=branch_list,
-    app_nav=[]
-) %}
+{% endblock %}
+
+{% block content %}
   <div class="wrap landing-wrap">
     <div class="portal-header">
       <div class="brand">
@@ -406,6 +393,15 @@ function submitWaitlist(e){
   if(sel){sel.value=stored;sel.addEventListener('change',function(){applyLang(sel.value);});}
 })();
 </script>
-{% endcall %}
-</body>
-</html>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+  var stored=localStorage.getItem('avalone_lang')||'auto';
+  applyLang(stored);
+  var sel=document.getElementById('langSelect');
+  if(sel){sel.value=stored;sel.addEventListener('change',function(){applyLang(sel.value);});}
+})();
+</script>
+{% endblock %}

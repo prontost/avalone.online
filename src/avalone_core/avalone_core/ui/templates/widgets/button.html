@@ -1,0 +1,5 @@
+{% if widget.href %}
+<a class="avalone-btn avalone-btn-{{ widget.variant }} {{ widget.extra_class }}" href="{{ widget.href }}">{{ widget.label }}</a>
+{% else %}
+<button class="avalone-btn avalone-btn-{{ widget.variant }} {{ widget.extra_class }}" type="{{ widget.type }}">{{ widget.label }}</button>
+{% endif %}
