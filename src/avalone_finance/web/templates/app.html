@@ -70,8 +70,8 @@ select,input[type=number],input[type=text],input[type=password],input[type=email
      font-size:11px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;transition:color .15s,background .15s;border-radius:12px;margin:0 4px}
 .tab.active{color:var(--accent);background:rgba(124,92,255,.10)}
 .tab-icon{font-size:22px}
-.toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:var(--card);
-  border:1px solid var(--green);border-radius:10px;padding:10px 16px;display:none;z-index:9}
+.toast{position:fixed;top:calc(var(--header-h) + 14px);left:50%;transform:translateX(-50%);background:var(--card);
+  border:1px solid var(--green);border-radius:10px;padding:10px 16px;display:none;z-index:110}
 .hidden{display:none}
 .del{color:var(--red);background:none;border:none;font-size:18px;cursor:pointer}
 .acc-switcher-head{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:4px 0}
@@ -144,12 +144,12 @@ select,input[type=number],input[type=text],input[type=password],input[type=email
   <div class="row" style="align-items:flex-start;gap:10px">
     <span style="font-size:20px">✉️</span>
     <div style="flex:1">
-      <b data-i="verify_email_title">Подтвердите email</b>
-      <p style="margin:4px 0 0" id="verify-body" data-i="verify_email_body">Мы отправили код на вашу почту. Введите его ниже.</p>
+      <b data-i="verify_email_title">{{ t('verify_email_title', lang=lang) }}</b>
+      <p style="margin:4px 0 0" id="verify-body" data-i="verify_email_body">{{ t('verify_email_body', lang=lang) }}</p>
       <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap">
-        <input type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" id="verify-code" style="width:120px;text-align:center;letter-spacing:4px" data-i-ph="verify_email_placeholder" placeholder="000000">
-        <button class="btn btn-primary" onclick="submitVerifyCode()" data-i="verify_email_button">Подтвердить</button>
-        <button class="btn btn-ghost" id="verify-resend" onclick="resendVerifyCode()" data-i="verify_email_resend">Отправить повторно</button>
+        <input type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" id="verify-code" style="width:120px;text-align:center;letter-spacing:4px" data-i-ph="verify_email_placeholder" placeholder="{{ t('verify_email_placeholder', lang=lang) }}">
+        <button class="btn btn-primary" onclick="submitVerifyCode()" data-i="verify_email_button">{{ t('verify_email_button', lang=lang) }}</button>
+        <button class="btn btn-ghost" id="verify-resend" onclick="resendVerifyCode()" data-i="verify_email_resend">{{ t('verify_email_resend', lang=lang) }}</button>
       </div>
       <p id="verify-status" style="margin:8px 0 0;font-size:13px;min-height:18px"></p>
     </div>
