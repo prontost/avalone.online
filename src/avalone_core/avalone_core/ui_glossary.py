@@ -121,7 +121,6 @@ EXACT: dict[str, str] = {
     "shell_status_planned": "Badge label for branches that are planned but not yet available.",
     "shell_share_app":      "Label of the single 'Invite friends' entry in the burger menu. Opens a modal with share, copy and QR options.",
     "shell_invite_title":   "Title of the invite-friend modal dialog.",
-    "shell_invite_hint":    "Short explanation in the invite modal: the link already contains the user's referral code.",
     "shell_invite_share_btn": "Button label in the invite modal that triggers the native system share sheet (iOS/Android/desktop).",
     "shell_invite_copy_btn": "Button label in the invite modal that copies the referral link to the clipboard.",
     "shell_invite_qr_alt":  "Alt text for the QR code image in the invite modal.",

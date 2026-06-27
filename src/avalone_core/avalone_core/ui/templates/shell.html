@@ -5,7 +5,6 @@
     toast_share_link_copied: {{ t('toast_share_link_copied', lang=lang) | tojson }},
     share_copy_prompt: {{ t('share_copy_prompt', lang=lang) | tojson }},
     shell_invite_title: {{ t('shell_invite_title', lang=lang) | tojson }},
-    shell_invite_hint: {{ t('shell_invite_hint', lang=lang) | tojson }},
     shell_invite_share_btn: {{ t('shell_invite_share_btn', lang=lang) | tojson }},
     shell_invite_copy_btn: {{ t('shell_invite_copy_btn', lang=lang) | tojson }},
     shell_invite_qr_alt: {{ t('shell_invite_qr_alt', lang=lang) | tojson }},
@@ -129,7 +128,6 @@
         </button>
       </div>
       <div class="avalone-modal__body">
-        <p class="text-muted" id="avalone-invite-hint">{{ t('shell_invite_hint', lang=lang) }}</p>
         <div class="avalone-invite__qr" id="avalone-invite-qr">
           <img src="" alt="{{ t('shell_invite_qr_alt', lang=lang) }}" id="avalone-invite-qr-img" style="display:none;max-width:200px;background:#fff;padding:8px;border-radius:12px">
         </div>
