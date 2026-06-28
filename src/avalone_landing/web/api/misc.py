@@ -2,21 +2,27 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from avalone_core import glossary_db as glossary
-from avalone_core.database import Database
 from avalone_core.device_service import DeviceService
 from avalone_core.language_service import LanguageService
 from avalone_core.referral_service import ReferralService
 from avalone_landing.config import settings
+from avalone_landing.core.feedback_service import FeedbackService
 from avalone_landing.core.mail_service import MailService
 from avalone_landing.core.models import User
 from avalone_landing.core.user_service import UserService
-from avalone_landing.web.dependencies import current_user, get_mail_service, get_user_service
+from avalone_landing.web.dependencies import (
+    current_user,
+    get_device_service,
+    get_feedback_service,
+    get_language_service,
+    get_mail_service,
+    get_referral_service,
+    get_user_service,
+)
 
 router = APIRouter()
 t = glossary.t
@@ -27,40 +33,19 @@ def _client_ip(request: Request) -> str:
     return fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "?")
 
 
-def _notify_admins_about_feedback(message: str, contact: str, source_page: str) -> None:
-    cfg = settings()
-    recipients = [e.strip() for e in cfg.admin_email.split(",") if "@" in e.strip()]
-    if not recipients:
-        return
-    subject = "[Avalone] Новое сообщение авторам"
-    body_lines = ["Получено новое сообщение через форму обратной связи.", ""]
-    if contact:
-        body_lines.append(f"Контакт: {contact}")
-    body_lines.append(f"Источник: {source_page or 'неизвестен'}")
-    body_lines.append("")
-    body_lines.append("Сообщение:")
-    body_lines.append(message)
-    body_lines.append("")
-    body_lines.append("Ответить удобнее всего через админку: https://avalone.online/admin/feedback")
-    body = "\n".join(body_lines)
-    mail = MailService(cfg)
-    for recipient in recipients:
-        try:
-            mail.send_email(recipient, subject, body)
-        except Exception:
-            pass
-
-
 @router.post("/api/lang")
-async def set_language(request: Request, user: User | None = Depends(current_user)):
+async def set_language(
+    request: Request,
+    user: User | None = Depends(current_user),
+    language_service: LanguageService = Depends(get_language_service),
+):
     body = await request.json()
     lang = str(body.get("lang", "auto")).strip().lower()
-    service = LanguageService()
-    service.detect(request)  # warm resolution
-    resolved = service._normalize(lang)
+    language_service.detect(request)  # warm resolution
+    resolved = language_service._normalize(lang)
 
     if user is not None:
-        service.set_user_language(user.id, resolved)
+        language_service.set_user_language(user.id, resolved)
 
     response = JSONResponse({"ok": True, "lang": resolved})
     response.set_cookie(
@@ -75,22 +60,32 @@ async def set_language(request: Request, user: User | None = Depends(current_use
 
 
 @router.get("/api/referral/code")
-async def referral_code(user: User | None = Depends(current_user)):
+async def referral_code(
+    user: User | None = Depends(current_user),
+    referral_service: ReferralService = Depends(get_referral_service),
+):
     if user is None:
         return JSONResponse({"error": "unauthorized"}, status_code=401)
-    code = ReferralService().get_or_create_code(user.id)
-    return {"code": code, "url": f"https://avalone.online?ref={code}"}
+    code = referral_service.get_or_create_code(user.id)
+    return {"code": code, "url": f"{settings().web_base_url}?ref={code}"}
 
 
 @router.get("/api/referral/stats")
-async def referral_stats(user: User | None = Depends(current_user)):
+async def referral_stats(
+    user: User | None = Depends(current_user),
+    referral_service: ReferralService = Depends(get_referral_service),
+):
     if user is None:
         return JSONResponse({"error": "unauthorized"}, status_code=401)
-    return ReferralService().stats(user.id)
+    return referral_service.stats(user.id)
 
 
 @router.post("/api/heartbeat")
-async def heartbeat(request: Request, user: User | None = Depends(current_user)):
+async def heartbeat(
+    request: Request,
+    user: User | None = Depends(current_user),
+    device_service: DeviceService = Depends(get_device_service),
+):
     if user is None:
         return JSONResponse({"error": "unauthorized"}, status_code=401)
     body = await request.json()
@@ -103,7 +98,7 @@ async def heartbeat(request: Request, user: User | None = Depends(current_user))
     except (TypeError, ValueError):
         seconds = 5
     user_agent = request.headers.get("user-agent", "")
-    result = DeviceService().heartbeat(
+    result = device_service.heartbeat(
         user.id,
         device_id,
         user_agent,
@@ -119,6 +114,7 @@ async def heartbeat(request: Request, user: User | None = Depends(current_user))
 async def submit_feedback(
     request: Request,
     user: User | None = Depends(current_user),
+    feedback_service: FeedbackService = Depends(get_feedback_service),
 ):
     body = await request.json()
     message = str(body.get("message", "")).strip()
@@ -129,15 +125,12 @@ async def submit_feedback(
     if len(message) > 4000:
         return JSONResponse({"error": "message_too_long"}, status_code=400)
 
-    created_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    with Database.shared().connection() as con:
-        con.execute(
-            "INSERT INTO avalone_feedback (user_id, source_page, contact, message, created_at) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (user.id if user else None, source_page, contact, message, created_at),
-        )
-        con.commit()
-    _notify_admins_about_feedback(message, contact, source_page)
+    feedback_service.submit(
+        user.id if user else None,
+        source_page,
+        contact,
+        message,
+    )
     return {"ok": True}
 
 

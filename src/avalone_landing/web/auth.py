@@ -10,7 +10,6 @@ from fastapi.templating import Jinja2Templates
 
 from avalone_core import glossary_db as glossary
 from avalone_core.device_service import DeviceService
-from avalone_core.referral_service import ReferralService
 from avalone_core.registry import AvaloneRegistry
 from avalone_core.ui import build_id as ui_build_id
 import avalone_core.ui
@@ -22,6 +21,7 @@ from avalone_landing.core.user_service import UserService
 from avalone_landing.web.dependencies import (
     current_user,
     get_auth_service,
+    get_device_service,
     get_mail_service,
     get_user_service,
 )
@@ -38,7 +38,11 @@ templates.env.globals["registry"] = AvaloneRegistry
 
 
 def _profile_context(
-    request: Request, user_service: UserService, user: User, **extra: object
+    request: Request,
+    user_service: UserService,
+    device_service: DeviceService,
+    user: User,
+    **extra: object,
 ) -> dict:
     u = user_service.get_user(user.id)
     ctx = _shell_context(
@@ -46,7 +50,7 @@ def _profile_context(
         {"id": u.id, "login": u.login, "name": u.name, "email": u.email, "created_at": u.created_at,
          "is_admin": u.is_admin, "email_verified": u.email_verified} if u else None,
     )
-    ctx["screen_time"] = DeviceService().screen_time_summary(user.id)
+    ctx["screen_time"] = device_service.screen_time_summary(user.id)
     ctx.update(extra)
     return ctx
 
@@ -497,19 +501,14 @@ async def profile_page(
     request: Request,
     user: User = Depends(current_user),
     user_service: UserService = Depends(get_user_service),
+    device_service: DeviceService = Depends(get_device_service),
 ):
     if user is None:
         return RedirectResponse("/login?next=/profile", status_code=303)
     u = user_service.get_user(user.id)
     if not u:
         return RedirectResponse("/login", status_code=303)
-    screen_time = DeviceService().screen_time_summary(u.id)
-    ctx = _shell_context(
-        request,
-        {"id": u.id, "login": u.login, "name": u.name, "email": u.email, "created_at": u.created_at,
-         "is_admin": u.is_admin, "email_verified": u.email_verified},
-    )
-    ctx["screen_time"] = screen_time
+    ctx = _profile_context(request, user_service, device_service, u)
     return templates.TemplateResponse(request, "profile.html", ctx)
 
 
@@ -533,6 +532,7 @@ async def update_profile_email(
     user: User = Depends(current_user),
     user_service: UserService = Depends(get_user_service),
     mail_service: MailService = Depends(get_mail_service),
+    device_service: DeviceService = Depends(get_device_service),
 ):
     if user is None:
         return JSONResponse({"error": t("error_unauthorized")}, status_code=401)
@@ -541,7 +541,7 @@ async def update_profile_email(
     if not email or "@" not in email:
         return templates.TemplateResponse(
             request, "profile.html",
-            _profile_context(request, user_service, user, error=t("profile_email_invalid")), status_code=400
+            _profile_context(request, user_service, device_service, user, error=t("profile_email_invalid")), status_code=400
         )
     user_service.update_email(user.id, email)
     code = user_service.generate_email_verification_code(user.id)
@@ -552,12 +552,12 @@ async def update_profile_email(
     except Exception as exc:
         return templates.TemplateResponse(
             request, "profile.html",
-            _profile_context(request, user_service, user, error=t("profile_verify_email_send_failed").format(error=str(exc))),
+            _profile_context(request, user_service, device_service, user, error=t("profile_verify_email_send_failed").format(error=str(exc))),
             status_code=500,
         )
     return templates.TemplateResponse(
         request, "profile.html",
-        _profile_context(request, user_service, user, success=t("profile_verify_email_sent"), pending_email_verification=True)
+        _profile_context(request, user_service, device_service, user, success=t("profile_verify_email_sent"), pending_email_verification=True)
     )
 
 
@@ -566,6 +566,7 @@ async def verify_profile_email(
     request: Request,
     user: User = Depends(current_user),
     user_service: UserService = Depends(get_user_service),
+    device_service: DeviceService = Depends(get_device_service),
 ):
     if user is None:
         return JSONResponse({"error": t("error_unauthorized")}, status_code=401)
@@ -573,9 +574,9 @@ async def verify_profile_email(
     code = str(form.get("code", "")).strip()
     if user_service.verify_email_code(user.id, code):
         return templates.TemplateResponse(
-            request, "profile.html", _profile_context(request, user_service, user, success=t("profile_email_verified_success"))
+            request, "profile.html", _profile_context(request, user_service, device_service, user, success=t("profile_email_verified_success"))
         )
     return templates.TemplateResponse(
         request, "profile.html",
-        _profile_context(request, user_service, user, error=t("profile_verify_email_invalid")), status_code=400
+        _profile_context(request, user_service, device_service, user, error=t("profile_verify_email_invalid")), status_code=400
     )

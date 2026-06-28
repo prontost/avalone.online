@@ -109,6 +109,21 @@ class UserRepository(Repository):
             return None
         return self._row_to_user(row)
 
+    def get_pwhash_by_login(self, login: str) -> str:
+        with self._conn() as con:
+            row = con.execute(
+                "SELECT pwhash FROM users WHERE login = ?", (login.strip().lower(),)
+            ).fetchone()
+        return row["pwhash"] if row else ""
+
+    def list_all(self) -> list[User]:
+        with self._conn() as con:
+            rows = con.execute(
+                "SELECT id, login, name, email, email_verified, referral_code, referred_by, created_at "
+                "FROM users ORDER BY login"
+            ).fetchall()
+        return [self._row_to_user(row) for row in rows if row["id"]]
+
     def create(self, login: str, password: str, email: str = "") -> int:
         login = login.strip().lower()
         if not login or not password:

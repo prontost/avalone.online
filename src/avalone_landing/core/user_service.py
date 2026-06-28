@@ -19,25 +19,22 @@ class UserService(Service):
     _RESET_TOKEN_TTL_HOURS = 1
     _MIN_PASSWORD_LENGTH = 6
 
-    def __init__(self, repository: UserRepository | None = None) -> None:
+    def __init__(
+        self,
+        repository: UserRepository | None = None,
+        role_service: RoleService | None = None,
+        referral_service: ReferralService | None = None,
+    ) -> None:
         self._repo = repository or UserRepository()
-        self._role_service = RoleService()
+        self._role_service = role_service or RoleService()
+        self._referral_service = referral_service
 
     def authenticate(self, login: str, password: str) -> User | None:
         login = login.strip().lower()
         candidate = self._repo.get_by_login_or_email(login)
-        if candidate and self._repo.verify_password(password, self._pwhash_for(candidate.login)):
+        if candidate and self._repo.verify_password(password, self._repo.get_pwhash_by_login(candidate.login)):
             return self._repo.get_by_id(candidate.id)
         return None
-
-    def _pwhash_for(self, login: str) -> str:
-        with self._repo._conn() as con:
-            row = con.execute(
-                "SELECT pwhash FROM users WHERE login = ?", (login,)
-            ).fetchone()
-        if not row:
-            return ""
-        return row["pwhash"]
 
     def get_user(self, user_id: int) -> User | None:
         return self._repo.get_by_id(user_id)
@@ -67,9 +64,8 @@ class UserService(Service):
             raise ValueError("password too short")
         user_id = self._repo.create(login, password, email)
         if referral_code:
-            ReferralService(user_repo=self._repo).apply_referral(
-                user_id, referral_code, None
-            )
+            referral_service = self._referral_service or ReferralService(user_repo=self._repo)
+            referral_service.apply_referral(user_id, referral_code, None)
         return user_id
 
     def login_taken(self, login: str) -> bool:
@@ -119,8 +115,4 @@ class UserService(Service):
         self._role_service.assign_roles(user_id, role_names)
 
     def list_users(self) -> list[User]:
-        with self._repo._conn() as con:
-            rows = con.execute(
-                "SELECT id, login, email, email_verified, created_at FROM users ORDER BY login"
-            ).fetchall()
-        return [self._repo.get_by_id(row["id"]) for row in rows if row["id"]]
+        return self._repo.list_all()

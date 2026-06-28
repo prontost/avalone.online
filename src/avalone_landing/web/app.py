@@ -1,41 +1,52 @@
 """Avalone landing page — catalog of apps under avalone.online."""
 
 import hashlib
+from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from avalone_core import glossary_db as glossary
-from avalone_core.db import migrate as migrate_db
 from avalone_core.language_service import LanguageService
 from avalone_core.registry import AvaloneRegistry
 import avalone_core.ui
 from avalone_landing.config import settings
 from avalone_landing.core.auth_service import AuthService
-from avalone_landing.core import users
+from avalone_landing.core.models import User
+from avalone_landing.core.role_service import RoleService
 from avalone_landing.core.user_service import UserService
 from avalone_landing.web.admin_router import router as admin_router
 from avalone_landing.web.api.admin import router as admin_api_router
 from avalone_landing.web.api.misc import router as misc_api_router
 from avalone_landing.web.auth import router as auth_router
+from avalone_landing.web.dependencies import current_user
 from avalone_landing.web.shell_context import render_shell_context
 from avalone_finance.web.app import finance_app
 
 t = glossary.t
-migrate_db()
 
-# Ensure the platform owner account always has the owner role.
-try:
-    _user_service = UserService()
-    if _user_service.get_user(1):
-        _user_service.set_roles(1, ["owner"])
-except Exception:
-    pass
 
-app = FastAPI(title="avalone.online")
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    from avalone_core.db import migrate as migrate_db
+
+    migrate_db()
+    _migrate_mail_settings()
+    try:
+        role_service = RoleService()
+        role_service.ensure_defaults()
+        user_service = UserService(role_service=role_service)
+        if user_service.get_user(1):
+            user_service.set_roles(1, ["owner"])
+    except Exception:
+        pass
+    yield
+
+
+app = FastAPI(title="avalone.online", lifespan=_lifespan)
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(admin_api_router)
@@ -59,9 +70,22 @@ _auth_service = AuthService()
 
 @app.middleware("http")
 async def current_user_ctx(request: Request, call_next):
-    user_id = _auth_service.active_user_id(request)
-    users.set_current(user_id)
+    request.state.user_id = _auth_service.active_user_id(request)
     return await call_next(request)
+
+
+def _user_dict(user: User | None) -> dict | None:
+    if user is None:
+        return None
+    return {
+        "id": user.id,
+        "login": user.login,
+        "name": user.name,
+        "email": user.email,
+        "created_at": user.created_at,
+        "is_admin": user.is_admin,
+        "email_verified": user.email_verified,
+    }
 
 
 def _build_id() -> str:
@@ -84,13 +108,12 @@ def _no_cache(resp: Response) -> Response:
     return resp
 
 
-def _render_shell(request: Request, current_app: str = "portal", app_nav=None, **extra):
-    user = users.get_user(users.current())
+def _render_shell(request: Request, user: User | None, current_app: str = "portal", app_nav=None, **extra):
     lang = LanguageService().detect(request)
     return render_shell_context(
         templates,
         request,
-        user,
+        _user_dict(user),
         current_app=current_app,
         app_nav=app_nav or [],
         build_id=BUILD_ID,
@@ -100,8 +123,11 @@ def _render_shell(request: Request, current_app: str = "portal", app_nav=None, *
 
 
 @app.get("/", response_class=HTMLResponse)
-async def landing(request: Request):
-    ctx = _render_shell(request, current_app="portal")
+async def landing(
+    request: Request,
+    user: User | None = Depends(current_user),
+):
+    ctx = _render_shell(request, user, current_app="portal")
     ctx["branch_list"] = AvaloneRegistry.for_shell(ctx.get("lang", "ru"))
     return _no_cache(
         templates.TemplateResponse(
@@ -135,7 +161,7 @@ async def manifest():
 
 def _migrate_mail_settings() -> None:
     """Move SMTP/mail settings from legacy module tables to avalone_global_settings."""
-    from avalone_core.database import Database
+    from avalone_core.repositories import SettingsRepository
 
     keys = (
         "smtp_host",
@@ -146,31 +172,7 @@ def _migrate_mail_settings() -> None:
         "mail_from",
         "mail_from_name",
     )
-    with Database.shared().connection() as con:
-        existing = {
-            r["key"] for r in con.execute("SELECT key FROM avalone_global_settings").fetchall()
-        }
-        for source_table in ("money_global_settings",):
-            if not con.execute(
-                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (source_table,)
-            ).fetchone():
-                continue
-            for key in keys:
-                if key in existing:
-                    continue
-                row = con.execute(
-                    f"SELECT value FROM {source_table} WHERE key=?", (key,)
-                ).fetchone()
-                if row and row["value"]:
-                    con.execute(
-                        "INSERT INTO avalone_global_settings (key, value) VALUES (?, ?)",
-                        (key, row["value"]),
-                    )
-                    existing.add(key)
-        con.commit()
-
-
-_migrate_mail_settings()
+    SettingsRepository().migrate_from_legacy(keys, source_table="money_global_settings")
 
 
 @app.get("/icon.svg")

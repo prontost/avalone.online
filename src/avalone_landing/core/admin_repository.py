@@ -6,6 +6,7 @@ import sqlite3
 from typing import Any
 
 from avalone_core.database import Database, Repository
+from avalone_core.repositories import SettingsRepository
 
 
 class AdminRepository(Repository):
@@ -16,6 +17,7 @@ class AdminRepository(Repository):
 
     def __init__(self, db: Database | None = None) -> None:
         super().__init__(db or Database.shared())
+        self._settings_repo = SettingsRepository(self._db)
 
     def _conn(self) -> sqlite3.Connection:
         return self._db.connection()
@@ -227,21 +229,10 @@ class AdminRepository(Repository):
     # ------------------------------------------------------------------
 
     def list_server_settings(self) -> dict[str, str]:
-        with self._conn() as con:
-            rows = con.execute(
-                "SELECT key, value FROM avalone_global_settings"
-            ).fetchall()
-        return {r["key"]: r["value"] for r in rows}
+        return self._settings_repo.all()
 
     def set_server_settings(self, settings: dict[str, str]) -> None:
-        with self._conn() as con:
-            for key, value in settings.items():
-                con.execute(
-                    "INSERT INTO avalone_global_settings (key, value) VALUES (?, ?) "
-                    "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-                    (key, value),
-                )
-            con.commit()
+        self._settings_repo.set_many(settings)
 
     # ------------------------------------------------------------------
     # Dashboard counts

@@ -13,14 +13,19 @@ from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
 
 from avalone_core import glossary_db as glossary
-from avalone_core.database import Database
 from avalone_core.registry import AvaloneRegistry
 from avalone_core.ui import Button, Card, PageHeader
 import avalone_core.ui
 from avalone_landing.core.admin_service import AdminService
+from avalone_landing.core.feedback_service import FeedbackService
 from avalone_landing.core.models import User
 from avalone_landing.core.role_service import RoleService
-from avalone_landing.web.dependencies import get_admin_service, require_permission
+from avalone_landing.web.dependencies import (
+    get_admin_service,
+    get_feedback_service,
+    get_role_service,
+    require_permission,
+)
 from avalone_landing.web.shell_context import render_shell_context
 
 router = APIRouter()
@@ -115,6 +120,7 @@ async def admin_users(
     request: Request,
     q: str = "",
     admin_service: AdminService = Depends(get_admin_service),
+    role_service: RoleService = Depends(get_role_service),
     admin: User = Depends(require_permission("users:manage")),
 ):
     ctx = _admin_shell_context(request, {"id": admin.id, "login": admin.login}, active_path="/admin/users")
@@ -124,7 +130,7 @@ async def admin_users(
         users = [u for u in users if query in u.login.lower() or query in u.email.lower()]
     ctx["users"] = [_user_dict(u) for u in users]
     ctx["query"] = q
-    ctx["all_roles"] = [r["name"] for r in RoleService().list_roles()]
+    ctx["all_roles"] = [r["name"] for r in role_service.list_roles()]
     ctx["header"] = PageHeader(
         title=glossary.t("admin_users_title"),
         actions=[Button(label=glossary.t("admin_menu_settings"), href="/admin/settings", variant="secondary").render(templates.env, request)],
@@ -137,6 +143,7 @@ async def admin_user_detail(
     request: Request,
     user_id: int,
     admin_service: AdminService = Depends(get_admin_service),
+    role_service: RoleService = Depends(get_role_service),
     admin: User = Depends(require_permission("users:manage")),
 ):
     ctx = _admin_shell_context(request, {"id": admin.id, "login": admin.login}, active_path="/admin/users")
@@ -144,7 +151,7 @@ async def admin_user_detail(
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     ctx["target"] = _user_dict(user)
-    ctx["all_roles"] = [r["name"] for r in RoleService().list_roles()]
+    ctx["all_roles"] = [r["name"] for r in role_service.list_roles()]
     ctx["header"] = PageHeader(
         title=glossary.t("admin_user_detail_title"),
         actions=[Button(label=glossary.t("admin_users_title"), href="/admin/users", variant="secondary").render(templates.env, request)],
@@ -168,34 +175,12 @@ async def admin_settings(
 async def admin_feedback(
     request: Request,
     admin: User = Depends(require_permission("users:manage")),
+    feedback_service: FeedbackService = Depends(get_feedback_service),
 ):
-    with Database.shared().connection() as con:
-        rows = con.execute(
-            "SELECT f.id, f.user_id, f.source_page, f.contact, f.message, f.created_at, "
-            "u.login, u.email "
-            "FROM avalone_feedback f "
-            "LEFT JOIN users u ON u.id = f.user_id "
-            "ORDER BY f.created_at DESC "
-            "LIMIT 200"
-        ).fetchall()
-    items = []
-    for row in rows:
-        items.append(
-            {
-                "id": row["id"],
-                "user_id": row["user_id"],
-                "login": row["login"] or "",
-                "email": row["email"] or "",
-                "contact": row["contact"] or "",
-                "source_page": row["source_page"] or "",
-                "message": row["message"],
-                "created_at": row["created_at"],
-            }
-        )
     ctx = _admin_shell_context(
         request, {"id": admin.id, "login": admin.login}, active_path="/admin/feedback"
     )
-    ctx["items"] = items
+    ctx["items"] = feedback_service.list_recent(limit=200)
     ctx["now"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
     ctx["header"] = PageHeader(title=glossary.t("admin_feedback_title")).render(templates.env, request)
     return templates.TemplateResponse(request, "admin/feedback.html", ctx)

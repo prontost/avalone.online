@@ -9,7 +9,7 @@ from typing import Any
 
 from avalone_core.database import Service
 
-from avalone_landing.config import settings
+from avalone_landing.config import Settings, settings
 from avalone_landing.core.admin_repository import AdminRepository
 from avalone_landing.core.auth_service import AuthService
 from avalone_landing.core.mail_service import MailService
@@ -49,12 +49,15 @@ class AdminService(Service):
         user_repository: UserRepository | None = None,
         mail_service: MailService | None = None,
         auth_service: AuthService | None = None,
+        role_service: RoleService | None = None,
+        cfg: Settings | None = None,
     ) -> None:
         self._repo = repository or AdminRepository()
         self._user_repo = user_repository or UserRepository()
-        self._mail = mail_service or MailService()
+        self._mail = mail_service or MailService(cfg=cfg)
         self._auth = auth_service
-        self._role_service = RoleService()
+        self._role_service = role_service or RoleService()
+        self._cfg = cfg or settings()
 
     # ------------------------------------------------------------------
     # Users
@@ -108,7 +111,7 @@ class AdminService(Service):
         token = secrets.token_urlsafe(32)
         expires = datetime.now(timezone.utc) + timedelta(hours=self._RESET_TOKEN_TTL_HOURS)
         self._repo.set_reset_token(user_id, token, expires.isoformat(timespec="seconds"))
-        return f"{settings().web_base_url}/reset-password?token={token}"
+        return f"{self._cfg.web_base_url}/reset-password?token={token}"
 
     def set_temporary_password(self, user_id: int, password: str) -> None:
         if len(password) < self._MIN_PASSWORD_LENGTH:

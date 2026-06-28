@@ -9,23 +9,9 @@ from ssl import create_default_context
 from typing import Any
 
 from avalone_core.database import Service
+from avalone_core.repositories import SettingsRepository
 
 from avalone_landing.config import Settings, settings
-
-
-def _global_mail_settings() -> dict[str, str]:
-    """Load mail-related overrides stored in the admin settings table."""
-    try:
-        from avalone_core.database import Database
-
-        with Database.shared().connection() as con:
-            rows = con.execute(
-                "SELECT key, value FROM avalone_global_settings "
-                "WHERE key LIKE 'smtp%' OR key LIKE 'mail%'"
-            ).fetchall()
-        return {r["key"]: r["value"] for r in rows}
-    except Exception:
-        return {}
 
 
 class MailService(Service):
@@ -35,12 +21,18 @@ class MailService(Service):
     so password-reset and test emails use the same configuration.
     """
 
-    def __init__(self, cfg: Settings | None = None) -> None:
+    def __init__(
+        self,
+        cfg: Settings | None = None,
+        settings_repository: SettingsRepository | None = None,
+    ) -> None:
         self._cfg = cfg or settings()
+        self._settings_repo = settings_repository or SettingsRepository()
 
     def _effective_config(self) -> dict[str, Any]:
         cfg = self._cfg.model_dump()
-        cfg.update(_global_mail_settings())
+        cfg.update(self._settings_repo.get_prefix("smtp"))
+        cfg.update(self._settings_repo.get_prefix("mail"))
         cfg["smtp_port"] = int(cfg.get("smtp_port", 587))
         cfg["smtp_use_tls"] = str(cfg.get("smtp_use_tls", "true")).lower() not in (
             "",
