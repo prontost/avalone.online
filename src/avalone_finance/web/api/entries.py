@@ -1,17 +1,26 @@
 """Counta API domain router."""
 
-import asyncio
 import logging
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from avalone_core import glossary_db as glossary
-from avalone_finance.core import constants, engine, entry_meta, lexicon, money
+from avalone_finance.core import entry_meta
+from avalone_finance.core.constants_service import ConstantsService
+from avalone_finance.core.ledger_service import LedgerError, LedgerService
+from avalone_finance.core.lexicon_service import LexiconService
+from avalone_finance.core.money_account_service import DEFAULT_CURRENCY, MoneyAccountService
 from avalone_finance.web.api.common import (
     _clabel, _human_label, _label, _lex_chat,
+)
+from avalone_finance.web.api.dependencies import (
+    get_constants_service,
+    get_ledger_service,
+    get_lexicon_service,
+    get_money_account_service,
 )
 
 log = logging.getLogger(__name__)
@@ -36,7 +45,11 @@ def _is_misc(account_name: str) -> bool:
 
 
 @router.post("/entry")
-async def post_entry(payload: dict):
+async def post_entry(
+    payload: dict,
+    ledger_service: LedgerService = Depends(get_ledger_service),
+    lexicon_service: LexiconService = Depends(get_lexicon_service),
+):
     """Hard input path: explicit accounts chosen in the UI. Deterministic."""
     try:
         amount = Decimal(str(payload["amount"]))
@@ -46,7 +59,7 @@ async def post_entry(payload: dict):
         return JSONResponse({"error": "error_amount_positive"}, status_code=400)
     op = payload.get("op", "expense")
     debit, credit = payload.get("debit"), payload.get("credit")
-    accounts = await engine.list_accounts()
+    accounts = ledger_service.list_accounts()
     acc_map = {a["name"]: a for a in accounts}
     if debit not in acc_map or credit not in acc_map:
         return JSONResponse({"error": "error_unknown_account"}, status_code=400)
@@ -55,13 +68,13 @@ async def post_entry(payload: dict):
     # пользователь может указать когда транзакция реально произошла. По умолчанию
     # — сейчас. Дата → posting_date (нативно в ERPNext), полное время → entry_meta.
     occurred = entry_meta.parse_occurred(payload.get("occurred_at")) or datetime.now()
-    name = await engine.post_journal_entry(
+    name = ledger_service.post_journal_entry(
         occurred.date(), remark, debit, credit, amount)
     entry_meta.set_occurred(name, occurred.isoformat(timespec="minutes"))
     # форма = подтверждённый выбор пользователя -> учим лексикон бесплатно
     if payload.get("learn_phrase"):
         kind = "category" if op == "expense" else "money"
-        lexicon.save(_lex_chat(), kind, payload["learn_phrase"], debit if op == "expense" else credit)
+        lexicon_service.save(_lex_chat(), kind, payload["learn_phrase"], debit if op == "expense" else credit)
     debit_label = _human_label(debit, acc_map[debit])
     credit_label = _human_label(credit, acc_map[credit])
     cur = (payload.get("currency") or "").strip()
@@ -75,28 +88,39 @@ async def post_entry(payload: dict):
         summary = f"{remark} — {amt} · {credit_label} → {debit_label}"
     return {"id": name, "summary": summary}
 
+
 @router.post("/entry/{entry_id}/cancel")
-async def cancel_entry(entry_id: str):
-    await engine.cancel_journal_entry(entry_id)
+async def cancel_entry(
+    entry_id: str,
+    ledger_service: LedgerService = Depends(get_ledger_service),
+):
+    ledger_service.cancel_journal_entry(entry_id)
     return {"ok": True}
 
+
 @router.post("/entry/{entry_id}/recategorize")
-async def recategorize(entry_id: str, payload: dict):
+async def recategorize(
+    entry_id: str,
+    payload: dict,
+    ledger_service: LedgerService = Depends(get_ledger_service),
+    constants_service: ConstantsService = Depends(get_constants_service),
+    lexicon_service: LexiconService = Depends(get_lexicon_service),
+):
     """Разбор: перенести запись в нормальную категорию (сторно + новая)."""
     new_debit = payload.get("debit")
-    accounts = await engine.list_accounts()
+    accounts = ledger_service.list_accounts()
     acc_map = {a["name"]: a for a in accounts}
     if new_debit not in acc_map:
         return JSONResponse({"error": "error_unknown_account"}, status_code=400)
-    rows = await engine.recent_entries(limit=constants.get("recent_entries_limit"))
+    rows = ledger_service.recent_entries(limit=constants_service.get("recent_entries_limit"))
     old = next((r for r in rows if r["name"] == entry_id), None)
     if old is None:
         return JSONResponse({"error": "error_entry_not_found"}, status_code=404)
-    accs = await engine.entry_accounts(entry_id)
+    accs = ledger_service.entry_accounts(entry_id)
     if not accs:
         return JSONResponse({"error": "error_entry_read_failed"}, status_code=500)
-    await engine.cancel_journal_entry(entry_id)
-    new_id = await engine.post_journal_entry(
+    ledger_service.cancel_journal_entry(entry_id)
+    new_id = ledger_service.post_journal_entry(
         old["posting_date"] if isinstance(old["posting_date"], date)
         else date.fromisoformat(str(old["posting_date"])),
         old["user_remark"] or _human_label(new_debit, acc_map[new_debit]),
@@ -106,49 +130,63 @@ async def recategorize(entry_id: str, payload: dict):
     if prev_occ:
         entry_meta.set_occurred(new_id, prev_occ)
     if payload.get("learn_phrase"):
-        lexicon.save(_lex_chat(), "category", payload["learn_phrase"], new_debit)
+        lexicon_service.save(_lex_chat(), "category", payload["learn_phrase"], new_debit)
     return {"id": new_id, "summary": f"→ {_human_label(new_debit, acc_map[new_debit])}"}
 
+
 @router.post("/entry/{entry_id}/restore")
-async def restore_entry(entry_id: str):
+async def restore_entry(
+    entry_id: str,
+    ledger_service: LedgerService = Depends(get_ledger_service),
+):
     """Вернуть отменённую проводку (docstatus 2 необратим → создаём копию).
     Отменённые показываются прямо в журнале блёкло; возврат — оттуда инлайн."""
-    new_id = await engine.restore_entry(entry_id)
+    ledger_service.restore_cancelled(entry_id)
+    new_id = entry_id
     prev_occ = entry_meta.occurred_map([entry_id]).get(entry_id)
     if prev_occ:
         entry_meta.set_occurred(new_id, prev_occ)
     return {"id": new_id}
 
+
 @router.post("/entry/{entry_id}/purge")
-async def purge_entry(entry_id: str):
+async def purge_entry(
+    entry_id: str,
+    ledger_service: LedgerService = Depends(get_ledger_service),
+):
     """Удалить проводку НАВСЕГДА (физически, без призраков). Доступно из журнала
     для отменённых записей. Метаданные тоже чистим."""
     try:
-        await engine.delete_entry(entry_id)
+        ledger_service.delete_entry(entry_id)
         entry_meta.forget(entry_id)
-    except engine.EngineError as e:
+    except LedgerError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     return {"ok": True}
 
+
 @router.get("/balances")
-async def balances(lang: str = "ru"):
+async def balances(
+    lang: str = "ru",
+    ledger_service: LedgerService = Depends(get_ledger_service),
+    money_service: MoneyAccountService = Depends(get_money_account_service),
+):
     """Остатки ПОВАЛЮТНО: счета каждой валюты суммируются отдельно, общего
     смешанного итога нет (валюты не складываем). Список валютных групп строится
     динамически из того, что реально в реестре/БД — без хардкода.
 
     Долг/актив — по ЗНАКУ фактического баланса (+ = деньги есть, − = должен),
     а не по типу счёта: овердрафт обычного счёта показывается долгом, как кредитка."""
-    accounts = [a for a in await engine.list_accounts()
+    accounts = [a for a in ledger_service.list_accounts()
                 if a["root_type"] in ("Asset", "Liability")]
-    bals = await asyncio.gather(*(engine.account_balance(a["name"]) for a in accounts))
-    reg_cur = money.registered_full()
+    bals = [ledger_service.account_balance(a["name"]) for a in accounts]
+    reg_cur = money_service.registered_full()
     # сгруппировать по валюте счёта (из нашего реестра; вне реестра → DEFAULT)
     groups: dict[str, dict] = {}
     for a, b in zip(accounts, bals):
         bf = float(b)
         if not bf:
             continue
-        cur = reg_cur.get(a["name"], {}).get("currency", money.DEFAULT_CURRENCY)
+        cur = reg_cur.get(a["name"], {}).get("currency", DEFAULT_CURRENCY)
         g = groups.setdefault(cur, {"currency": cur, "items": [],
                                     "assets": 0.0, "debts": 0.0})
         item = {"label": _clabel(a, lang), "amount": abs(bf), "debt": bf < 0}
@@ -161,16 +199,30 @@ async def balances(lang: str = "ru"):
         out.append(g)
     return {"groups": out}
 
+
 @router.get("/entries")
-async def entries(limit: int = 20, offset: int = 0, lang: str = "ru",
-                  category: str | None = None, only: str | None = None,
-                  date_from: str | None = None, date_to: str | None = None,
-                  created_from: str | None = None, created_to: str | None = None,
-                  amount_min: str | None = None, amount_max: str | None = None,
-                  account: str | None = None, q: str | None = None,
-                  currency: str | None = None, op_type: str | None = None,
-                  income: str | None = None,
-                  sort: str = "occurred_desc", hide_cancelled: str | None = None):
+async def entries(
+    limit: int = 20,
+    offset: int = 0,
+    lang: str = "ru",
+    category: str | None = None,
+    only: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    created_from: str | None = None,
+    created_to: str | None = None,
+    amount_min: str | None = None,
+    amount_max: str | None = None,
+    account: str | None = None,
+    q: str | None = None,
+    currency: str | None = None,
+    op_type: str | None = None,
+    income: str | None = None,
+    sort: str = "occurred_desc",
+    hide_cancelled: str | None = None,
+    ledger_service: LedgerService = Depends(get_ledger_service),
+    money_service: MoneyAccountService = Depends(get_money_account_service),
+):
     """Журнал с фильтрами + пагинация (offset/limit, has_more для автодогрузки):
     - category=<account name>: только проводки с этим счётом в дебете (расход);
     - income=<account name>: только проводки с этим счётом в кредите (источник дохода);
@@ -204,19 +256,20 @@ async def entries(limit: int = 20, offset: int = 0, lang: str = "ru",
     # hide_cancelled=1 — фильтруем отменённые уже в ERPNext, чтобы пагинация
     # не поехала от выпадения строк.
     statuses = (1,) if hide_cancelled == "1" else (1, 2)
-    rows = await engine.recent_entries(limit=fetch_n, extra_filters=extra,
-                                        order_by=order, docstatus=statuses)
+    rows = ledger_service.recent_entries(
+        limit=fetch_n, extra_filters=extra,
+        order_by=order, docstatus=statuses)
     # include disabled accounts so their labels still render for old entries
-    accs_map = {a["name"]: a for a in await engine.list_accounts(include_disabled=True)}
-    accs_all = await asyncio.gather(*(engine.entry_accounts(r["name"]) for r in rows))
-    reg_cur = money.registered_full()   # {pk: {currency...}} — валюта денежного счёта
+    accs_map = {a["name"]: a for a in ledger_service.list_accounts(include_disabled=True)}
+    accs_all = [ledger_service.entry_accounts(r["name"]) for r in rows]
+    reg_cur = money_service.registered_full()   # {pk: {currency...}} — валюта денежного счёта
 
     def _entry_currency(accs):
         # валюта записи = валюта денежного счёта в проводке (любой из сторон)
         for a in (accs or []):
             if a in reg_cur:
                 return reg_cur[a]["currency"]
-        return money.DEFAULT_CURRENCY
+        return DEFAULT_CURRENCY
 
     def _entry_op(debit_rt: str | None, credit_rt: str | None) -> str:
         if debit_rt == "Expense":
@@ -264,7 +317,7 @@ async def entries(limit: int = 20, offset: int = 0, lang: str = "ru",
     def _disp(pk):
         # имя счёта в журнале: пользовательское имя денежного счёта (переименование)
         # -> catalog -> сырое. Ключ pk стабилен, имя берётся «на лету».
-        custom = money.account_label(pk)
+        custom = money_service.account_label(pk)
         if custom:
             return custom
         a = accs_map.get(pk)
@@ -319,28 +372,31 @@ def _period_range(period: str, date_from: str | None = None, date_to: str | None
     return today.replace(day=1).isoformat(), today.isoformat(), "rep_month"
 
 
-async def _report_groups(period: str, lang: str, date_from: str | None = None, date_to: str | None = None):
+def _report_groups(period: str, lang: str, date_from: str | None = None, date_to: str | None = None):
     """Ядро отчёта: вернуть (date_from, date_to, label_key, groups)."""
+    ledger_service = LedgerService()
+    money_service = MoneyAccountService()
+    constants_service = ConstantsService()
     date_from, date_to, label_key = _period_range(period, date_from, date_to)
     extra: list = []
     if date_from:
         extra.append(["posting_date", ">=", date_from])
     if date_to:
         extra.append(["posting_date", "<=", date_to])
-    accounts = await engine.list_accounts()
+    accounts = ledger_service.list_accounts()
     root_of = {a["name"]: a["root_type"] for a in accounts}
-    reg_cur = money.registered_full()
+    reg_cur = money_service.registered_full()
 
     def _cur(accs):
         for a in (accs or []):
             if a in reg_cur:
                 return reg_cur[a]["currency"]
-        return money.DEFAULT_CURRENCY
+        return DEFAULT_CURRENCY
 
-    rows = await engine.recent_entries(
-        limit=constants.get("export_entries_limit"), extra_filters=extra, docstatus=(1,)
+    rows = ledger_service.recent_entries(
+        limit=constants_service.get("export_entries_limit"), extra_filters=extra, docstatus=(1,)
     )
-    accs_all = await asyncio.gather(*(engine.entry_accounts(r["name"]) for r in rows))
+    accs_all = [ledger_service.entry_accounts(r["name"]) for r in rows]
     cur_data: dict = {}
 
     def _g(c):
@@ -376,7 +432,7 @@ async def _report_groups(period: str, lang: str, date_from: str | None = None, d
             g["_inc"][credit] = g["_inc"].get(credit, 0.0) + amt
 
     def _disp(pk):
-        custom = money.account_label(pk)
+        custom = money_service.account_label(pk)
         if custom:
             return custom
         a = next((x for x in accounts if x["name"] == pk), None)
@@ -405,12 +461,16 @@ async def _report_groups(period: str, lang: str, date_from: str | None = None, d
 
 
 @router.get("/report")
-async def report(period: str = "month", lang: str = "ru",
-                 date_from: str | None = None, date_to: str | None = None):
+async def report(
+    period: str = "month",
+    lang: str = "ru",
+    date_from: str | None = None,
+    date_to: str | None = None,
+):
     """Детерминированный отчёт за период (без LLM): доход/расход/итог ПОВАЛЮТНО,
     топ категорий расхода и доход по источникам. Переводы между своими счетами
     в доход/расход не попадают."""
-    date_from, date_to, label_key, groups = await _report_groups(
+    date_from, date_to, label_key, groups = _report_groups(
         period, lang, date_from, date_to)
     return {"period": period, "label_key": label_key,
             "date_from": date_from, "date_to": date_to, "groups": groups}

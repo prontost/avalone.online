@@ -22,11 +22,19 @@ from avalone_core.language_service import LanguageService
 from avalone_core.registry import AvaloneRegistry
 from avalone_core.ui import Shell, build_id as ui_build_id
 import avalone_core.ui
-from avalone_finance.core import constants, db, external_auth, security, tenant
+from avalone_finance.core import db, external_auth, security
+from avalone_finance.core.catalog_service import CatalogService
 from avalone_finance.core.config import settings
+from avalone_finance.core.constants_service import ConstantsService
+from avalone_finance.core.currency_service import CurrencyService
 from avalone_finance.core.external_auth import FinanceAuthProvider
 from avalone_finance.core.glossary_seed import seed as _seed_glossary
+from avalone_finance.core.money_account_service import MoneyAccountService
+from avalone_finance.core.tenant import OWNER_TENANT_ID, TenantService
 from avalone_finance.web.api import router as api_router
+
+
+_constants_service = ConstantsService()
 
 
 def _setup_logging() -> None:
@@ -35,8 +43,8 @@ def _setup_logging() -> None:
     log_dir.mkdir(parents=True, exist_ok=True)
     handler = logging.handlers.RotatingFileHandler(
         log_dir / "counta.log",
-        maxBytes=constants.get("log_max_bytes"),
-        backupCount=constants.get("log_backup_count"),
+        maxBytes=_constants_service.get("log_max_bytes"),
+        backupCount=_constants_service.get("log_backup_count"),
         encoding="utf-8",
     )
     handler.setFormatter(logging.Formatter(
@@ -92,7 +100,7 @@ def _build_id() -> str:
                     h.update(f.read_bytes())
                 except Exception:
                     pass
-    return h.hexdigest()[:constants.get("build_id_hash_length")]
+    return h.hexdigest()[:_constants_service.get("build_id_hash_length")]
 
 
 BUILD_ID = _build_id()
@@ -120,7 +128,7 @@ async def auth_gate(request: Request, call_next):
     tid = external_auth.user_id_of(request)
     # КАЖДЫЙ запрос ставит текущего тенанта в contextvar — все запросы к БД
     # фильтруются по нему (изоляция данных между пользователями).
-    tenant.set_current(tid)
+    TenantService().set_current(tid)
     if path not in open_paths and not path.startswith("/static/") and not tid:
         if path.startswith("/api"):
             return JSONResponse({"error": glossary.t("error_unauthorized", lang="ru")}, status_code=401)
@@ -151,12 +159,13 @@ async def admin_login_page(request: Request):
 @finance_app.get("/admin", response_class=HTMLResponse)
 async def admin_dashboard(request: Request):
     avalone_uid = external_auth.user_id_of(request)
-    if not avalone_uid or not tenant.is_admin(avalone_uid):
+    user_service = TenantService()
+    if not avalone_uid or not user_service.is_admin(avalone_uid):
         return RedirectResponse("/finance/admin/login", status_code=303)
     lang = LanguageService(auth_service=_auth_provider).detect(request)
     return _no_cache(templates.TemplateResponse(request, "admin_dashboard.html", {
         "build_id": BUILD_ID,
-        "user": tenant.get_user(avalone_uid),
+        "user": user_service.get_user(avalone_uid),
         "lang": lang,
         "i18n": glossary.all_by_lang(module="money"),
     }))
@@ -183,7 +192,8 @@ def _shell_context_for(request: Request, user, current_app: str = "money"):
 
 @finance_app.get("/", response_class=HTMLResponse)
 async def app_page(request: Request):
-    user = tenant.get_user(tenant.current()) if tenant.current() else None
+    user_service = TenantService()
+    user = user_service.get_user(user_service.current()) if user_service.current() else None
     ctx = _shell_context_for(request, user, current_app="money")
     return _no_cache(templates.TemplateResponse(request, "app.html", ctx))
 
@@ -220,8 +230,10 @@ async def icon_512():
 
 
 @finance_app.get("/qr")
-async def qr(url: str = "", size: int = constants.get("qr_default_size")):
+async def qr(url: str = "", size: int | None = None):
     """SVG QR-код для быстрого входа/регистрации."""
+    if size is None:
+        size = _constants_service.get("qr_default_size")
     if not url:
         url = settings().web_base_url or "/finance/"
     try:
@@ -267,26 +279,28 @@ finance_app.include_router(api_router)
 @finance_app.on_event("startup")
 async def _ensure_catalog():
     """Идемпотентно гарантируем базовый набор категорий с переводами ru/en/ko —
-    чтобы новый пользователь не смотрел в пустой дроплист (см. catalog.DEFAULT_KEYS).
+    чтобы новый пользователь не смотрел в пустой дроплист (см. CatalogService.DEFAULT_KEYS).
     Сид выполняется для всех существующих тенантов (никакого служебного owner)."""
     _setup_logging()  # uvicorn перезаписывает root-логгер, поэтому ставим handler ещё раз
     import logging
-    from avalone_finance.core import catalog, money
+    user_service = TenantService()
+    catalog_service = CatalogService()
+    money_service = MoneyAccountService()
     # Ensure unified glossary keys exist before any page renders.
     try:
         _seed_glossary()
     except Exception:
         logging.getLogger(__name__).exception("glossary seed")
-    for tid in tenant.all_ids():
-        tenant.set_current(tid)
+    for tid in user_service.all_ids():
+        user_service.set_current(tid)
         try:
-            n = await catalog.ensure_user_catalog()
+            n = await catalog_service.ensure_user_catalog()
             if n:
                 logging.getLogger(__name__).info("ensure_user_catalog tenant=%s: created %d categories", tid, n)
         except Exception:
             logging.getLogger(__name__).exception("ensure_user_catalog tenant=%s", tid)
         try:
-            m = await money.ensure_money_seed()
+            m = await money_service.ensure_money_seed()
             if m:
                 logging.getLogger(__name__).info("ensure_money_seed tenant=%s: seeded %d money accounts", tid, m)
         except Exception:
@@ -294,20 +308,19 @@ async def _ensure_catalog():
     # этапы B/A глоссария: доменные строки — в единый глоссарий
     # (уведомления, валюты, канонические категории/доходы под нейтральными ключами)
     try:
-        from avalone_finance.core import currency
-        currency.seed_glossary()
-        catalog.seed_glossary()
+        CurrencyService().seed_glossary()
+        catalog_service.seed_glossary()
     except Exception:
         logging.getLogger(__name__).exception("glossary domain seed")
     # Гарантируем наличие ролей по умолчанию и хотя бы одного администратора Counta.
     try:
         from avalone_landing.core.role_service import RoleService, RoleRepository
-        RoleService(RoleRepository(tenant._default_repo._db)).ensure_defaults()
-        if not tenant.list_admins():
+        RoleService(RoleRepository(user_service._repo._db)).ensure_defaults()
+        if not user_service.list_admins():
             admin_login = "lucifer"
-            u = tenant.get_user_by_login(admin_login)
+            u = user_service.get_user_by_login(admin_login)
             if u:
-                tenant.add_admin(u["id"])
+                user_service.add_admin(u["id"])
                 logging.getLogger(__name__).info(
                     "created default admin: %s (uid=%s)", admin_login, u["id"])
     except Exception:

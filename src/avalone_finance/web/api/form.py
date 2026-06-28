@@ -3,11 +3,21 @@
 import asyncio
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-from avalone_finance.core import catalog, currency, engine, glossary, ledger_ops, money
+from avalone_finance.core import glossary, ledger_ops
+from avalone_finance.core.catalog_service import CatalogService
+from avalone_finance.core.currency_service import CurrencyService
+from avalone_finance.core.ledger_service import LedgerService
+from avalone_finance.core.money_account_service import MoneyAccountService
 from avalone_finance.web.api.common import (
     _clabel, _is_visible, _money_label,
+)
+from avalone_finance.web.api.dependencies import (
+    get_catalog_service,
+    get_currency_service,
+    get_ledger_service,
+    get_money_account_service,
 )
 
 log = logging.getLogger(__name__)
@@ -24,29 +34,34 @@ def _is_misc(account_name: str) -> bool:
 
 
 @router.get("/form-data")
-async def form_data(lang: str = "ru", include_disabled: bool = False):
+async def form_data(
+    lang: str = "ru",
+    include_disabled: bool = False,
+    ledger_service: LedgerService = Depends(get_ledger_service),
+    money_service: MoneyAccountService = Depends(get_money_account_service),
+    catalog_service: CatalogService = Depends(get_catalog_service),
+    currency_service: CurrencyService = Depends(get_currency_service),
+):
     """Everything the entry form needs: categories + money accounts.
     include_disabled=true — показать скрытые счета/категории (для правки старых
     записей или переноса остатков), они помечаются флагом disabled."""
-    accounts = await engine.list_accounts(include_disabled=include_disabled)
+    accounts = ledger_service.list_accounts(include_disabled=include_disabled)
     cats = [a for a in accounts
             if a["root_type"] == "Expense"
             and a.get("account_type") not in ledger_ops._EXCLUDED_ACCOUNT_TYPES
             and (not _is_misc(a["account_name"]) or a["account_name"] in ("Uncategorized", "Other expense"))
             and _is_visible(a)]
     cat_names = [a["name"] for a in cats]
-    bals, counts = await asyncio.gather(
-        asyncio.gather(*(engine.account_balance(a["name"]) for a in cats)),
-        engine.entry_counts(cat_names),
-    )
+    bals = [ledger_service.account_balance(a["name"]) for a in cats]
+    counts = ledger_service.entry_counts(cat_names)
     used, rest = [], []
     for a, b in zip(cats, bals):
         item = {"name": a["name"], "label": _clabel(a, lang),
                 "is_uncategorized": a["account_name"] == "Uncategorized",
                 "count": counts.get(a["name"], 0),
                 "disabled": bool(a.get("disabled")),
-                "role": catalog.role(a["account_name"])}
-        is_user = catalog.is_user_category(a["name"]) and a["account_name"] not in catalog.CANON
+                "role": catalog_service.role(a["account_name"])}
+        is_user = catalog_service.is_user_category(a["name"]) and a["account_name"] not in catalog_service.CANON
         (used if (float(b) or is_user) else rest).append(item)
     # used: сначала по частоте убыв., затем по роли/алфавиту; rest: по роли/алфавиту
     role_order = {"need": 0, "want": 1, "goal": 2, "": 9}
@@ -63,7 +78,7 @@ async def form_data(lang: str = "ru", include_disabled: bool = False):
     # currency — валюта счёта (наш реестр), форма подставит её в дроплист валют.
     label_of = {a["name"]: a for a in accounts}
     money_list = [{"name": name, "label": _money_label(name, raw, lang),
-                   "currency": money.account_currency(name),
+                   "currency": money_service.account_currency(name),
                    "disabled": bool(label_of.get(name, {}).get("disabled"))}
                   for raw, name in ledger_ops.money_options(accounts)]
     incomes = [{"name": a["name"], "label": _clabel(a, lang),
@@ -74,7 +89,8 @@ async def form_data(lang: str = "ru", include_disabled: bool = False):
     # долги (debt) удалены из формы — вернём по новой схеме учёта позже.
     return {"categories_used": used, "categories_all": rest,
             "money": money_list, "incomes": incomes,
-            "currencies": currency.options(lang)}
+            "currencies": currency_service.options(lang)}
+
 
 @router.get("/glossary")
 async def glossary_all(full: int = 0):
@@ -84,6 +100,7 @@ async def glossary_all(full: int = 0):
     if full:
         return {"entries": glossary.entries(), "missing_desc": glossary.missing_desc()}
     return glossary.all_by_lang()
+
 
 @router.post("/glossary/seed")
 async def glossary_seed(payload: dict):
@@ -104,14 +121,24 @@ async def glossary_seed(payload: dict):
     described = ui_glossary.apply_descriptions()
     return {"seeded": n, "described": described}
 
+
 @router.get("/currencies")
-async def currencies(lang: str = "ru"):
+async def currencies(
+    lang: str = "ru",
+    currency_service: CurrencyService = Depends(get_currency_service),
+):
     """Список валют для дроплистов: фиат + крипта (тогл на фронте)."""
-    return currency.options(lang)
+    return currency_service.options(lang)
+
 
 @router.get("/convert")
-async def convert(amount: float, frm: str, to: str):
+async def convert(
+    amount: float,
+    frm: str,
+    to: str,
+    currency_service: CurrencyService = Depends(get_currency_service),
+):
     """Живой курс без кэша: перевести amount из валюты frm в to.
     {value: float} или {value: null} если курс недоступен (форма не подставит)."""
-    val = await currency.convert(amount, frm, to)
+    val = await currency_service.convert(amount, frm, to)
     return {"value": val, "from": frm.upper(), "to": to.upper()}

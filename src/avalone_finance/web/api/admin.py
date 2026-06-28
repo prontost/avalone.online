@@ -11,14 +11,18 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from avalone_core import glossary_db as glossary
-from avalone_finance.core import constants, currency, db
+from avalone_finance.core import db
 from avalone_finance.core.app_access_service import AppAccessService
 from avalone_finance.core.config import settings
+from avalone_finance.core.constants_service import ConstantsService
+from avalone_finance.core.currency_service import CurrencyService
 from avalone_finance.core.global_settings_service import GlobalSettingsService
-from avalone_finance.core.money import DEFAULT_CURRENCY
+from avalone_finance.core.money_account_service import DEFAULT_CURRENCY
 from avalone_finance.core.tenant import OWNER_TENANT_ID, TenantService
 from avalone_finance.web.api.dependencies import (
     get_app_access_service,
+    get_constants_service,
+    get_currency_service,
     get_global_settings_service,
     get_user_service,
     require_admin,
@@ -106,6 +110,7 @@ async def admin_users(
 async def admin_stats(
     admin_id: int = Depends(require_admin),
     user_service: TenantService = Depends(get_user_service),
+    currency_service: CurrencyService = Depends(get_currency_service),
 ):
     """Admins: instance-wide stats."""
     del admin_id
@@ -116,7 +121,7 @@ async def admin_stats(
         "db_size": db_size,
         "users": user_service.count_users(),
         "entries": user_service.count_entries(),
-        "currencies": len(currency.ALL),
+        "currencies": len(currency_service.ALL),
     }
 
 
@@ -147,13 +152,16 @@ async def admin_list(
 
 
 @router.get("/constants")
-async def admin_constants_list(admin_id: int = Depends(require_admin)):
+async def admin_constants_list(
+    admin_id: int = Depends(require_admin),
+    constants_service: ConstantsService = Depends(get_constants_service),
+):
     """Admins: all tunable constants with current values and defaults."""
     del admin_id
     return {
         "constants": [
-            {"key": k, "value": constants.get(k), "default": v, "type": type(v).__name__}
-            for k, v in constants.DEFAULTS.items()
+            {"key": k, "value": constants_service.get(k), "default": v, "type": type(v).__name__}
+            for k, v in constants_service.DEFAULTS.items()
         ],
     }
 
@@ -163,17 +171,18 @@ async def admin_constants_update(
     payload: dict,
     admin_id: int = Depends(require_admin),
     global_settings_service: GlobalSettingsService = Depends(get_global_settings_service),
+    constants_service: ConstantsService = Depends(get_constants_service),
 ):
     """Admins: update one or more tunable constants."""
     del admin_id
     updates = payload.get("updates", {})
     for key, value in updates.items():
-        if key not in constants.DEFAULTS:
+        if key not in constants_service.DEFAULTS:
             return JSONResponse(
                 {"error": _t("error_unknown_constant").replace("{key}", key)},
                 status_code=400,
             )
-        default = constants.DEFAULTS[key]
+        default = constants_service.DEFAULTS[key]
         try:
             if isinstance(default, bool):
                 str(value).lower() in ("1", "true", "yes", "on")
@@ -189,7 +198,7 @@ async def admin_constants_update(
                 status_code=400,
             )
         global_settings_service.set(key, str(value))
-    return {"ok": True, "constants": constants.all_effective()}
+    return {"ok": True, "constants": constants_service.all_effective()}
 
 
 @router.post("/admins")
@@ -224,6 +233,7 @@ async def admin_remove(
 async def admin_config(
     admin_id: int = Depends(require_admin),
     global_settings_service: GlobalSettingsService = Depends(get_global_settings_service),
+    currency_service: CurrencyService = Depends(get_currency_service),
 ):
     """Admins: editable runtime config + env secrets (masked) + static constants."""
     del admin_id
@@ -243,7 +253,7 @@ async def admin_config(
             "DEFAULT_CURRENCY": DEFAULT_CURRENCY,
             "registration_mode_env": s.registration_mode,
             "registration_invite_code_env": bool(s.registration_invite_code),
-            "currencies_count": len(currency.ALL),
+            "currencies_count": len(currency_service.ALL),
         },
         "env": {
             "smtp_password": _mask(s.smtp_password),
@@ -256,9 +266,9 @@ async def admin_config(
             "smtp_from": s.smtp_from,
         },
         "options": {
-            "currencies": sorted(currency.ALL.keys()),
+            "currencies": sorted(currency_service.ALL.keys()),
             "registration_modes": ["open", "invite", "closed"],
-            "default_currencies": sorted(currency.ALL.keys()),
+            "default_currencies": sorted(currency_service.ALL.keys()),
         },
     }
 
@@ -268,6 +278,7 @@ async def admin_config_update(
     payload: dict,
     admin_id: int = Depends(require_admin),
     global_settings_service: GlobalSettingsService = Depends(get_global_settings_service),
+    currency_service: CurrencyService = Depends(get_currency_service),
 ):
     """Admins: update runtime config keys stored in global_settings."""
     del admin_id
@@ -283,7 +294,7 @@ async def admin_config_update(
             continue
         if key == "registration_mode" and value not in ("open", "invite", "closed"):
             return JSONResponse({"error": _t("error_invalid_mode")}, status_code=400)
-        if key == "default_currency" and value not in currency.ALL:
+        if key == "default_currency" and value not in currency_service.ALL:
             return JSONResponse({"error": _t("error_unknown_currency")}, status_code=400)
         if key == "strict_password_policy":
             value = "true" if str(value).strip().lower() in ("1", "true", "yes", "on") else "false"

@@ -145,10 +145,11 @@ def test_account_disable_money_account(client, seed_entries):
 
 def test_verify_code_uses_client_ip(client, monkeypatch):
     """/send-verify-code использует _client_ip — проверяем, что не 500."""
-    from avalone_finance.core import tenant, notify
+    from avalone_finance.core import tenant
+    from avalone_finance.core.notify_service import NotifyService
     tenant.set_current(tenant.authenticate("owner", "ownerpass"))
     tenant.set_email(tenant.current(), "test@example.com")
-    monkeypatch.setattr(notify, "_send_email", lambda *a, **kw: True)
+    monkeypatch.setattr(NotifyService, "send_email", lambda *a, **kw: True)
     r = client.post("/api/send-verify-code")
     assert r.status_code == 200, r.text
     assert r.json().get("sent") is True

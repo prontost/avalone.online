@@ -3,8 +3,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from avalone_core import glossary_db as glossary
-from avalone_finance.core import notifications
-from avalone_finance.web.api.dependencies import current_tenant
+from avalone_finance.core.notification_service import NotificationService
+from avalone_finance.web.api.dependencies import current_tenant, get_notification_service
 
 router = APIRouter(prefix="/notifications")
 
@@ -16,6 +16,7 @@ async def list_notifications(
     limit: int = 50,
     offset: int = 0,
     tenant_id: int = Depends(current_tenant),
+    service: NotificationService = Depends(get_notification_service),
 ):
     """Список уведомлений текущего пользователя для приложения app.
 
@@ -23,32 +24,45 @@ async def list_notifications(
     """
     if filter not in ("all", "unread", "read", "dismissed"):
         filter = "all"
-    return notifications.list_(tenant_id, app, filter=filter, limit=limit, offset=offset)
+    return service.list_(tenant_id, app, filter=filter, limit=limit, offset=offset)
 
 
 @router.post("/read")
-async def mark_read(payload: dict, tenant_id: int = Depends(current_tenant)):
+async def mark_read(
+    payload: dict,
+    tenant_id: int = Depends(current_tenant),
+    service: NotificationService = Depends(get_notification_service),
+):
     ids = [int(i) for i in payload.get("ids", []) if str(i).isdigit()]
-    n = notifications.mark_read(ids, tenant_id)
+    n = service.mark_read(ids, tenant_id)
     return {"marked": n}
 
 
 @router.post("/dismiss")
-async def mark_dismissed(payload: dict, tenant_id: int = Depends(current_tenant)):
+async def mark_dismissed(
+    payload: dict,
+    tenant_id: int = Depends(current_tenant),
+    service: NotificationService = Depends(get_notification_service),
+):
     ids = [int(i) for i in payload.get("ids", []) if str(i).isdigit()]
-    n = notifications.mark_dismissed(ids, tenant_id)
+    n = service.mark_dismissed(ids, tenant_id)
     return {"dismissed": n}
 
 
 @router.get("/unread-count")
-async def unread_count(app: str = "counta", tenant_id: int = Depends(current_tenant)):
-    return {"count": notifications.count_unread(tenant_id, app)}
+async def unread_count(
+    app: str = "counta",
+    tenant_id: int = Depends(current_tenant),
+    service: NotificationService = Depends(get_notification_service),
+):
+    return {"count": service.count_unread(tenant_id, app)}
 
 
 @router.post("")
 async def create_notification(
     payload: dict,
     tenant_id: int = Depends(current_tenant),
+    service: NotificationService = Depends(get_notification_service),
 ):
     """Ручное создание уведомления (для тестов и системных событий)."""
     title = payload.get("title", "").strip()
@@ -57,7 +71,7 @@ async def create_notification(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=glossary.t("error_empty_name", lang="ru"),
         )
-    nid = notifications.add(
+    nid = service.add(
         tenant_id,
         app=payload.get("app", "counta"),
         title=title,

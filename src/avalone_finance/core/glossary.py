@@ -13,6 +13,7 @@ from avalone_core.glossary_db import (
     get,
     missing_desc,
     set_desc,
+    t,
     upsert,
     upsert_many,
 )
@@ -26,6 +27,7 @@ __all__ = [
     "get",
     "missing_desc",
     "set_desc",
+    "t",
     "upsert",
     "upsert_many",
 ]

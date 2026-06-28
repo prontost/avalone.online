@@ -1,37 +1,20 @@
-"""Unified DB-backed glossary for the whole Avalone platform.
+"""Backward-compatible facade over GlossaryRepository.
 
-Design goals:
-- One table `avalone_glossary` is the single source of truth.
-- Every user-facing phrase is keyed; languages are translations, not the source.
-- Every key has a `desc` (meta-context) so AI/human translators know role and location.
-- Backwards-compatible API for the old `counta.core.glossary` / `routa.core.glossary` modules.
+This module no longer contains raw SQL. All database operations live in
+`GlossaryRepository` (avalone_core.glossary_service). It keeps the portal seed
+data and re-exports the original functional API plus the class API for
+convenience.
 """
 
 from __future__ import annotations
 
-import sqlite3
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from avalone_core.db import connection
+if TYPE_CHECKING:
+    from avalone_core.glossary_service import SCHEMA, GlossaryRepository
 
 LANGS = ("ru", "en", "ko")
-
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS avalone_glossary (
-    key        TEXT PRIMARY KEY,
-    ru         TEXT,
-    en         TEXT,
-    ko         TEXT,
-    kind       TEXT DEFAULT 'ui',
-    module     TEXT DEFAULT '',
-    desc       TEXT DEFAULT '',
-    updated_at TEXT DEFAULT ''
-);
-
-CREATE INDEX IF NOT EXISTS idx_avalone_glossary_kind   ON avalone_glossary(kind);
-CREATE INDEX IF NOT EXISTS idx_avalone_glossary_module ON avalone_glossary(module);
-"""
 
 # Seed data for the portal / shared shell. Domain keys (Counta/Routa categories,
 # currencies, etc.) are migrated from legacy tables or seeded by the apps.
@@ -397,90 +380,40 @@ _PORTAL_SEED_EXTRA: list[dict[str, Any]] = [
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
+_repo: "GlossaryRepository" | None = None
+
+
+def _get_repo() -> "GlossaryRepository":
+    global _repo
+    if _repo is None:
+        from avalone_core.glossary_service import GlossaryRepository
+        _repo = GlossaryRepository()
+    return _repo
+
 
 def ensure_schema() -> None:
-    with connection() as con:
-        con.executescript(SCHEMA)
+    return _get_repo().ensure_schema()
 
 
 def upsert(key: str, ru: str = "", en: str = "", ko: str = "", kind: str = "ui",
            module: str = "", desc: str | None = None) -> None:
-    upsert_many([{"key": key, "ru": ru, "en": en, "ko": ko,
-                  "kind": kind, "module": module, "desc": desc}])
+    return _get_repo().upsert(key, ru, en, ko, kind, module, desc)
 
 
 def upsert_many(rows: list[dict[str, Any]]) -> int:
-    """Insert or update rows. desc=None means "do not overwrite existing desc".
-    desc="" explicitly clears it. Returns number of processed rows."""
-    with connection() as con:
-        for r in rows:
-            desc = r.get("desc")
-            now = _now()
-            params = (
-                r["key"],
-                r.get("ru", ""),
-                r.get("en", ""),
-                r.get("ko", ""),
-                r.get("kind", "ui"),
-                r.get("module", ""),
-                desc if desc is not None else "",
-                now,
-            )
-            if desc is None:
-                con.execute(
-                    "INSERT INTO avalone_glossary "
-                    "(key, ru, en, ko, kind, module, desc, updated_at) VALUES (?,?,?,?,?,?,?,?) "
-                    "ON CONFLICT(key) DO UPDATE SET "
-                    "ru=COALESCE(NULLIF(excluded.ru,''),avalone_glossary.ru), "
-                    "en=COALESCE(NULLIF(excluded.en,''),avalone_glossary.en), "
-                    "ko=COALESCE(NULLIF(excluded.ko,''),avalone_glossary.ko), "
-                    "kind=COALESCE(NULLIF(excluded.kind,''),avalone_glossary.kind), "
-                    "module=COALESCE(NULLIF(excluded.module,''),avalone_glossary.module), "
-                    "updated_at=excluded.updated_at "
-                    "WHERE excluded.ru<>avalone_glossary.ru OR excluded.en<>avalone_glossary.en "
-                    "OR excluded.ko<>avalone_glossary.ko OR excluded.kind<>avalone_glossary.kind "
-                    "OR excluded.module<>avalone_glossary.module",
-                    params,
-                )
-            else:
-                con.execute(
-                    "INSERT INTO avalone_glossary "
-                    "(key, ru, en, ko, kind, module, desc, updated_at) VALUES (?,?,?,?,?,?,?,?) "
-                    "ON CONFLICT(key) DO UPDATE SET "
-                    "ru=COALESCE(NULLIF(excluded.ru,''),avalone_glossary.ru), "
-                    "en=COALESCE(NULLIF(excluded.en,''),avalone_glossary.en), "
-                    "ko=COALESCE(NULLIF(excluded.ko,''),avalone_glossary.ko), "
-                    "kind=COALESCE(NULLIF(excluded.kind,''),avalone_glossary.kind), "
-                    "module=COALESCE(NULLIF(excluded.module,''),avalone_glossary.module), "
-                    "desc=excluded.desc, updated_at=excluded.updated_at",
-                    params,
-                )
-    return len(rows)
+    return _get_repo().upsert_many(rows)
 
 
 def set_desc(key: str, desc: str) -> None:
-    with connection() as con:
-        con.execute(
-            "UPDATE avalone_glossary SET desc=?, updated_at=? WHERE key=?",
-            (desc, _now(), key),
-        )
+    return _get_repo().set_desc(key, desc)
 
 
 def touch(key: str) -> None:
-    with connection() as con:
-        con.execute("UPDATE avalone_glossary SET updated_at=? WHERE key=?", (_now(), key))
+    return _get_repo().touch(key)
 
 
 def get(key: str, lang: str = "ru") -> str:
-    """Translate key; fallback ru -> en -> key."""
-    with connection() as con:
-        row = con.execute(
-            "SELECT ru, en, ko FROM avalone_glossary WHERE key=?", (key,)
-        ).fetchone()
-    if not row:
-        return key
-    vals = {"ru": row["ru"], "en": row["en"], "ko": row["ko"]}
-    return vals.get(lang) or vals["ru"] or vals["en"] or key
+    return _get_repo().get(key, lang)
 
 
 # Alias used in templates and registry.
@@ -488,189 +421,57 @@ t = get
 
 
 def all_by_lang(kind: str | None = None, module: str | None = None) -> dict[str, dict[str, str]]:
-    """{lang: {key: text}} convenient for front-end bootstrapping."""
-    out: dict[str, dict[str, str]] = {l: {} for l in LANGS}
-    where: list[str] = []
-    params: list[Any] = []
-    if kind:
-        where.append("kind=?")
-        params.append(kind)
-    if module:
-        where.append("module=?")
-        params.append(module)
-    sql = "SELECT key, ru, en, ko FROM avalone_glossary"
-    if where:
-        sql += " WHERE " + " AND ".join(where)
-    with connection() as con:
-        for row in con.execute(sql, params):
-            vals = {"ru": row["ru"], "en": row["en"], "ko": row["ko"]}
-            for l in LANGS:
-                if vals.get(l):
-                    out[l][row["key"]] = vals[l]
-    return out
+    return _get_repo().all_by_lang(kind, module)
 
 
 def i18n_js() -> dict[str, dict[str, str]]:
-    """Backwards-compatible alias for Jinja global."""
-    return all_by_lang()
+    return _get_repo().i18n_js()
 
 
 def entries(kind: str | None = None, module: str | None = None) -> list[dict[str, Any]]:
-    where: list[str] = []
-    params: list[Any] = []
-    if kind:
-        where.append("kind=?")
-        params.append(kind)
-    if module:
-        where.append("module=?")
-        params.append(module)
-    sql = "SELECT key, ru, en, ko, kind, module, desc FROM avalone_glossary"
-    if where:
-        sql += " WHERE " + " AND ".join(where)
-    sql += " ORDER BY module, kind, key"
-    with connection() as con:
-        rows = con.execute(sql, params).fetchall()
-    return [{
-        "key": r["key"],
-        "ru": r["ru"] or "",
-        "en": r["en"] or "",
-        "ko": r["ko"] or "",
-        "kind": r["kind"] or "ui",
-        "module": r["module"] or "",
-        "desc": r["desc"] or "",
-    } for r in rows]
+    return _get_repo().entries(kind, module)
 
 
 def describe(key: str) -> str:
-    with connection() as con:
-        row = con.execute("SELECT desc FROM avalone_glossary WHERE key=?", (key,)).fetchone()
-    return (row["desc"] if row and row["desc"] else "")
+    return _get_repo().describe(key)
 
 
 def missing_desc(kind: str | None = None, module: str | None = None) -> list[str]:
-    where = ["(desc IS NULL OR desc='')"]
-    params: list[Any] = []
-    if kind:
-        where.append("kind=?")
-        params.append(kind)
-    if module:
-        where.append("module=?")
-        params.append(module)
-    sql = "SELECT key FROM avalone_glossary WHERE " + " AND ".join(where) + " ORDER BY module, kind, key"
-    with connection() as con:
-        return [r["key"] for r in con.execute(sql, params)]
+    return _get_repo().missing_desc(kind, module)
 
 
 def count(kind: str | None = None, module: str | None = None) -> int:
-    where: list[str] = []
-    params: list[Any] = []
-    if kind:
-        where.append("kind=?")
-        params.append(kind)
-    if module:
-        where.append("module=?")
-        params.append(module)
-    sql = "SELECT COUNT(*) FROM avalone_glossary"
-    if where:
-        sql += " WHERE " + " AND ".join(where)
-    with connection() as con:
-        return con.execute(sql, params).fetchone()[0]
-
-
-def _legacy_table_exists(con: sqlite3.Connection, name: str) -> bool:
-    r = con.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (name,)
-    ).fetchone()
-    return r is not None
-
-
-def _merge_legacy(con: sqlite3.Connection, table: str, module: str) -> int:
-    """Copy rows from a legacy per-app glossary table into avalone_glossary,
-    merging translations and descriptions without overwriting non-empty values."""
-    if not _legacy_table_exists(con, table):
-        return 0
-    rows = con.execute(
-        f"SELECT key, ru, en, ko, kind, desc FROM {table}"
-    ).fetchall()
-    merged = 0
-    for r in rows:
-        key, ru, en, ko, kind, desc = r
-        existing = con.execute(
-            "SELECT ru, en, ko, desc FROM avalone_glossary WHERE key=?", (key,)
-        ).fetchone()
-        if existing:
-            eru, een, eko, edesc = existing
-            ru = ru or eru or ""
-            en = en or een or ""
-            ko = ko or eko or ""
-            desc = desc or edesc or ""
-            con.execute(
-                "UPDATE avalone_glossary SET ru=?, en=?, ko=?, kind=COALESCE(NULLIF(?,''),kind), "
-                "module=COALESCE(NULLIF(?,''),module), desc=? WHERE key=?",
-                (ru, en, ko, kind, module, desc, key),
-            )
-        else:
-            con.execute(
-                "INSERT INTO avalone_glossary (key, ru, en, ko, kind, module, desc, updated_at) "
-                "VALUES (?,?,?,?,?,?,?,?)",
-                (key, ru or "", en or "", ko or "", kind or "ui", module, desc or "", _now()),
-            )
-        merged += 1
-    return merged
+    return _get_repo().count(kind, module)
 
 
 def migrate_legacy() -> dict[str, int]:
-    """Migrate money_glossary into avalone_glossary.
-    Safe to call multiple times; idempotent merge."""
-    with connection() as con:
-        n_money = _merge_legacy(con, "money_glossary", "money")
-    return {"money": n_money}
+    return _get_repo().migrate_legacy()
 
 
 def seed_portal() -> int:
-    """Seed portal/shared keys. Idempotent: preserves existing desc if already set."""
-    from avalone_core.ui_glossary import describe as ui_describe
-    rows = []
-    for row in _PORTAL_SEED + _PORTAL_SEED_EXTRA:
-        d = dict(row)
-        d.setdefault("desc", ui_describe(row["key"]))
-        rows.append(d)
-    return upsert_many(rows)
+    return _get_repo().seed_portal()
 
 
 def apply_descriptions() -> int:
-    """Fill empty desc values for UI keys using ui_glossary rules."""
-    from avalone_core.ui_glossary import describe as ui_describe
-    updated = 0
-    with connection() as con:
-        keys = [r["key"] for r in con.execute(
-            "SELECT key FROM avalone_glossary WHERE (desc IS NULL OR desc='')"
-        )]
-    for key in keys:
-        d = ui_describe(key)
-        if d:
-            set_desc(key, d)
-            updated += 1
-    return updated
+    return _get_repo().apply_descriptions()
 
 
 def migrate() -> dict[str, Any]:
-    """Run schema creation, legacy migration, portal seed, and description backfill.
-    Called from avalone_core.db.migrate() on every app startup."""
-    ensure_schema()
-    legacy = migrate_legacy()
-    portal = seed_portal()
-    described = apply_descriptions()
-    return {"legacy": legacy, "portal": portal, "described": described}
+    return _get_repo().migrate()
 
 
 def audit() -> dict[str, Any]:
-    """Human-readable summary for CLI/debugging."""
-    return {
-        "total": count(),
-        "missing_desc": missing_desc(),
-        "by_module": {
-            module: count(module=module)
-            for module in ("portal", "money")
-        },
-    }
+    return _get_repo().audit()
+
+
+def __getattr__(name: str) -> Any:
+    if name == "SCHEMA":
+        from avalone_core.glossary_service import SCHEMA
+        return SCHEMA
+    if name == "GlossaryRepository":
+        from avalone_core.glossary_service import GlossaryRepository
+        return GlossaryRepository
+    if name == "GlossaryService":
+        from avalone_core.glossary_service import GlossaryService
+        return GlossaryService
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
