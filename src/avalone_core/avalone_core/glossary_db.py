@@ -174,6 +174,7 @@ _PORTAL_SEED_EXTRA: list[dict[str, Any]] = [
                                                        "ko": "메일이 설정되지 않았습니다. 아래 링크를 사용하세요(개발 전용):", "kind": "ui", "module": "portal"},
     {"key": "reset_title",                   "ru": "Новый пароль",                                        "en": "New password",                               "ko": "새 비밀번호", "kind": "ui", "module": "portal"},
     {"key": "reset_btn_save",                "ru": "Сохранить пароль",                                    "en": "Save password",                              "ko": "비밀번호 저장", "kind": "ui", "module": "portal"},
+    {"key": "reset_token_missing",           "ru": "Ссылка для сброса не действительна или устарела.",    "en": "Reset link is invalid or expired.",          "ko": "재설정 링크가 유효하지 않거나 만료되었습니다.", "kind": "ui", "module": "portal"},
     {"key": "reset_token_invalid",           "ru": "Ссылка устарела или недействительна. Запросите новую.",
                                                        "en": "This link is expired or invalid. Please request a new one.",
                                                        "ko": "링크가 만료되었거나 유효하지 않습니다. 새로 요청하세요.", "kind": "ui", "module": "portal"},
