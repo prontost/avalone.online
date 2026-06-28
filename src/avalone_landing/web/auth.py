@@ -18,8 +18,10 @@ from avalone_landing.core.auth_service import AuthService
 from avalone_landing.core.mail_service import MailService
 from avalone_landing.core.models import User
 from avalone_landing.core.user_service import UserService
+from avalone_landing.web.auth_controller import AuthController, AuthResult
 from avalone_landing.web.dependencies import (
     current_user,
+    get_auth_controller,
     get_auth_service,
     get_device_service,
     get_mail_service,
@@ -115,147 +117,83 @@ async def login_page(
 @router.post("/login")
 async def login(
     request: Request,
-    auth_service: AuthService = Depends(get_auth_service),
-    user_service: UserService = Depends(get_user_service),
+    auth_controller: AuthController = Depends(get_auth_controller),
     active_user: User | None = Depends(current_user),
 ):
     form = await request.form()
     login_field = str(form.get("login", "")).strip()
     pw = str(form.get("password", ""))
-    user = user_service.authenticate(login_field, pw)
+    result = auth_controller.login(
+        login_field, pw, active_user.id if active_user else 0
+    )
     base_ctx = {"already_user": {"id": active_user.id, "login": active_user.login, "name": active_user.name, "email": active_user.email}} if active_user else {}
-    if user:
-        active_uid = auth_service.active_user_id(request)
-        if user.id == active_uid:
-            return templates.TemplateResponse(
-                request,
-                "login.html",
-                _shell_context(request, _user_shell_dict(active_user), info=t("auth_already_active"), **base_ctx),
-                status_code=200,
-            )
+    if result.success:
         next_url = str(form.get("next", "")).strip()
         if not next_url or not next_url.startswith(("http://", "https://", "/")):
             next_url = "/"
         resp = RedirectResponse(next_url, status_code=303)
-        auth_service.issue_session(request, resp, user.id)
+        auth_controller.issue_session(request, resp, result.user_id)
         return resp
+    if result.already_active:
+        return templates.TemplateResponse(
+            request,
+            "login.html",
+            _shell_context(request, _user_shell_dict(active_user), info=t("auth_already_active"), **base_ctx),
+            status_code=200,
+        )
     return templates.TemplateResponse(
         request,
         "login.html",
-        _shell_context(request, _user_shell_dict(active_user), error=t("auth_error_invalid_credentials"), **base_ctx),
-        status_code=401,
+        _shell_context(request, _user_shell_dict(active_user), error=t(result.error), **base_ctx),
+        status_code=result.error_code,
     )
 
 
 @router.post("/api/auth/login")
 async def api_login(
     request: Request,
-    auth_service: AuthService = Depends(get_auth_service),
-    user_service: UserService = Depends(get_user_service),
+    auth_controller: AuthController = Depends(get_auth_controller),
 ):
     body = await request.json()
     login_field = str(body.get("login", "")).strip()
     pw = str(body.get("password", ""))
-    user = user_service.authenticate(login_field, pw)
-    if not user:
-        return JSONResponse({"error": t("auth_error_invalid_credentials")}, status_code=401)
-    active_uid = auth_service.active_user_id(request)
-    if user.id == active_uid:
-        return JSONResponse({"error": t("auth_already_active")}, status_code=400)
+    result = auth_controller.login(login_field, pw)
+    if not result.success:
+        return JSONResponse({"error": t(result.error)}, status_code=result.error_code)
     resp = JSONResponse({"ok": True, "next": "/"})
-    auth_service.issue_session(request, resp, user.id)
-    return resp
-
-
-@router.post("/api/auth/register")
-async def api_register(
-    request: Request,
-    auth_service: AuthService = Depends(get_auth_service),
-    user_service: UserService = Depends(get_user_service),
-):
-    body = await request.json()
-    login_field = str(body.get("login", "")).strip()
-    pw = str(body.get("password", ""))
-    pw2 = str(body.get("password2", ""))
-    invite = str(body.get("invite", "")).strip()
-
-    if not login_field or not pw:
-        return JSONResponse({"error": t("auth_error_required")}, status_code=400)
-    if pw != pw2:
-        return JSONResponse({"error": t("auth_error_password_mismatch")}, status_code=400)
-    if len(pw) < 6:
-        return JSONResponse({"error": t("auth_error_password_too_short")}, status_code=400)
-    if user_service.login_taken(login_field):
-        return JSONResponse({"error": t("auth_error_login_taken")}, status_code=400)
-
-    try:
-        user_id = user_service.create_user(login_field, pw, referral_code=invite)
-    except ValueError as e:
-        return JSONResponse({"error": str(e)}, status_code=400)
-
-    resp = JSONResponse({"ok": True, "next": "/"})
-    auth_service.issue_session(request, resp, user_id)
+    auth_controller.issue_session(request, resp, result.user_id)
     return resp
 
 
 @router.post("/api/auth/forgot-password")
 async def api_forgot_password(
     request: Request,
-    user_service: UserService = Depends(get_user_service),
-    mail_service: MailService = Depends(get_mail_service),
+    auth_controller: AuthController = Depends(get_auth_controller),
 ):
     body = await request.json()
     login_or_email = str(body.get("login_or_email", "")).strip()
-    if not login_or_email:
-        return JSONResponse({"error": t("reset_error_required")}, status_code=400)
-
-    result = user_service.request_password_reset(login_or_email)
-    if result:
-        user, token = result
-        if user.email:
-            reset_url = f"{settings().web_base_url}/login?mode=reset&token={token}"
-            subject = t("reset_email_subject")
-            body_text = t("reset_email_body").format(login=user.login, url=reset_url)
-            cfg = settings()
-            try:
-                mail_service.send_email(user.email, subject, body_text)
-            except Exception:
-                pass
-    # Always return generic success to avoid user enumeration.
+    result = auth_controller.request_password_reset(login_or_email)
+    if not result.success:
+        return JSONResponse({"error": t(result.error)}, status_code=result.error_code)
     return JSONResponse({"ok": True, "message": t("reset_email_sent_generic")})
 
 
 @router.post("/api/auth/reset-password")
 async def api_reset_password(
     request: Request,
-    auth_service: AuthService = Depends(get_auth_service),
-    user_service: UserService = Depends(get_user_service),
+    auth_controller: AuthController = Depends(get_auth_controller),
 ):
     body = await request.json()
     token = str(body.get("token", ""))
     pw = str(body.get("password", ""))
     pw2 = str(body.get("password2", ""))
 
-    user = user_service.get_user_by_reset_token(token) if token else None
-    if not user:
-        return JSONResponse({"error": t("reset_token_invalid")}, status_code=400)
-    if not pw:
-        return JSONResponse({"error": t("auth_error_required")}, status_code=400)
-    if pw != pw2:
-        return JSONResponse({"error": t("auth_error_password_mismatch")}, status_code=400)
-    if len(pw) < 6:
-        return JSONResponse({"error": t("auth_error_password_too_short")}, status_code=400)
-
-    try:
-        user = user_service.reset_password(token, pw)
-    except ValueError as e:
-        return JSONResponse({"error": str(e)}, status_code=400)
-
-    if user is None:
-        return JSONResponse({"error": t("reset_token_invalid")}, status_code=400)
+    result = auth_controller.reset_password(token, pw, pw2)
+    if not result.success:
+        return JSONResponse({"error": t(result.error)}, status_code=result.error_code)
 
     resp = JSONResponse({"ok": True, "next": "/"})
-    auth_service.issue_session(request, resp, user.id)
+    auth_controller.issue_session(request, resp, result.user_id)
     return resp
 
 
@@ -270,61 +208,35 @@ async def forgot_password_page(
 @router.post("/forgot-password")
 async def forgot_password(
     request: Request,
-    user_service: UserService = Depends(get_user_service),
-    mail_service: MailService = Depends(get_mail_service),
+    auth_controller: AuthController = Depends(get_auth_controller),
     active_user: User | None = Depends(current_user),
 ):
     form = await request.form()
     login_or_email = str(form.get("login_or_email", "")).strip()
     ctx: dict = {}
-    if login_or_email:
-        result = user_service.request_password_reset(login_or_email)
-        if result:
-            user, token = result
-            if user.email:
-                reset_url = f"{settings().web_base_url}/login?mode=reset&token={token}"
-                subject = t("reset_email_subject")
-                body = t("reset_email_body").format(login=user.login, url=reset_url)
-                cfg = settings()
-                if cfg.smtp_host:
-                    # Production: send via configured SMTP relay.
-                    try:
-                        mail_service.send_email(user.email, subject, body)
-                        ctx["success"] = t("reset_email_sent")
-                    except Exception as exc:
-                        ctx["error"] = t("reset_email_failed").format(error=str(exc))
-                        ctx["reset_url"] = reset_url
-                else:
-                    # Dev/local fallback: attempt local sendmail, but always expose
-                    # the link because delivery is unreliable without a real relay.
-                    try:
-                        mail_service.send_email(user.email, subject, body)
-                    except Exception:
-                        pass
-                    ctx["success"] = t("reset_email_sent")
-                    ctx["reset_url"] = reset_url
-            else:
-                # User exists but has no email on file.
-                ctx["success"] = t("reset_email_sent_no_email")
-        else:
-            # Do not reveal that the user does not exist.
-            ctx["success"] = t("reset_email_sent_generic")
+    result = auth_controller.request_password_reset(login_or_email)
+    if not result.success:
+        ctx["error"] = t(result.error)
+    elif result.reset_url:
+        ctx["success"] = t("reset_email_sent")
+        if not settings().smtp_host:
+            ctx["reset_url"] = result.reset_url
     else:
-        ctx["error"] = t("reset_error_required")
+        ctx["success"] = t("reset_email_sent_generic")
     return templates.TemplateResponse(request, "forgot_password.html", _shell_context(request, _user_shell_dict(active_user), **ctx))
 
 
 @router.get("/reset-password", response_class=HTMLResponse)
 async def reset_password_page(
     request: Request,
-    user_service: UserService = Depends(get_user_service),
+    auth_controller: AuthController = Depends(get_auth_controller),
     active_user: User | None = Depends(current_user),
 ):
     token = request.query_params.get("token", "")
-    user = user_service.get_user_by_reset_token(token) if token else None
-    if not user:
+    result = auth_controller.reset_password(token, "", "")
+    if not result.success:
         return templates.TemplateResponse(
-            request, "reset_password.html", _shell_context(request, _user_shell_dict(active_user), error=t("reset_token_invalid")), status_code=400
+            request, "reset_password.html", _shell_context(request, _user_shell_dict(active_user), error=t(result.error)), status_code=400
         )
     return templates.TemplateResponse(request, "reset_password.html", _shell_context(request, _user_shell_dict(active_user), token=token))
 
@@ -332,8 +244,7 @@ async def reset_password_page(
 @router.post("/reset-password")
 async def reset_password_submit(
     request: Request,
-    auth_service: AuthService = Depends(get_auth_service),
-    user_service: UserService = Depends(get_user_service),
+    auth_controller: AuthController = Depends(get_auth_controller),
     active_user: User | None = Depends(current_user),
 ):
     form = await request.form()
@@ -341,40 +252,18 @@ async def reset_password_submit(
     pw = str(form.get("password", ""))
     pw2 = str(form.get("password2", ""))
 
-    user = user_service.get_user_by_reset_token(token) if token else None
-    if not user:
+    result = auth_controller.reset_password(token, pw, pw2)
+    if not result.success:
         return templates.TemplateResponse(
-            request, "reset_password.html", _shell_context(request, _user_shell_dict(active_user), error=t("reset_token_invalid")), status_code=400
-        )
-
-    error = None
-    if not pw:
-        error = t("auth_error_required")
-    elif pw != pw2:
-        error = t("auth_error_password_mismatch")
-    elif len(pw) < 6:
-        error = t("auth_error_password_too_short")
-
-    if error:
-        return templates.TemplateResponse(
-            request, "reset_password.html", _shell_context(request, _user_shell_dict(active_user), token=token, error=error), status_code=400
-        )
-
-    try:
-        user = user_service.reset_password(token, pw)
-    except ValueError as e:
-        return templates.TemplateResponse(
-            request, "reset_password.html", _shell_context(request, _user_shell_dict(active_user), token=token, error=str(e)), status_code=400
-        )
-
-    if user is None:
-        return templates.TemplateResponse(
-            request, "reset_password.html", _shell_context(request, _user_shell_dict(active_user), token=token, error=t("reset_token_invalid")), status_code=400
+            request,
+            "reset_password.html",
+            _shell_context(request, _user_shell_dict(active_user), token=token, error=t(result.error)),
+            status_code=result.error_code,
         )
 
     # Log the user in immediately so the SSO cookie is available for Counta/Routa.
     resp = RedirectResponse("/", status_code=303)
-    auth_service.issue_session(request, resp, user.id)
+    auth_controller.issue_session(request, resp, result.user_id)
     return resp
 
 
@@ -392,8 +281,7 @@ async def register_page(
 @router.post("/register")
 async def register(
     request: Request,
-    auth_service: AuthService = Depends(get_auth_service),
-    user_service: UserService = Depends(get_user_service),
+    auth_controller: AuthController = Depends(get_auth_controller),
     active_user: User | None = Depends(current_user),
 ):
     form = await request.form()
@@ -402,30 +290,38 @@ async def register(
     pw2 = str(form.get("password2", ""))
     invite = str(form.get("invite", "")).strip()
 
-    error = None
-    if not login_field or not pw:
-        error = t("auth_error_required")
-    elif pw != pw2:
-        error = t("auth_error_password_mismatch")
-    elif len(pw) < 6:
-        error = t("auth_error_password_too_short")
-    elif user_service.login_taken(login_field):
-        error = t("auth_error_login_taken")
-
-    if error:
+    result = auth_controller.register(
+        login_field, pw, pw2, invite, active_user.id if active_user else 0
+    )
+    if not result.success:
         return templates.TemplateResponse(
-            request, "register.html", _shell_context(request, _user_shell_dict(active_user), error=error), status_code=400
-        )
-
-    try:
-        user_id = user_service.create_user(login_field, pw, referral_code=invite)
-    except ValueError as e:
-        return templates.TemplateResponse(
-            request, "register.html", _shell_context(request, _user_shell_dict(active_user), error=str(e)), status_code=400
+            request,
+            "register.html",
+            _shell_context(request, _user_shell_dict(active_user), error=t(result.error)),
+            status_code=result.error_code,
         )
 
     resp = RedirectResponse("/", status_code=303)
-    auth_service.issue_session(request, resp, user_id)
+    auth_controller.issue_session(request, resp, result.user_id)
+    return resp
+
+
+@router.post("/api/auth/register")
+async def api_register(
+    request: Request,
+    auth_controller: AuthController = Depends(get_auth_controller),
+):
+    body = await request.json()
+    login_field = str(body.get("login", "")).strip()
+    pw = str(body.get("password", ""))
+    pw2 = str(body.get("password2", ""))
+    invite = str(body.get("invite", "")).strip()
+
+    result = auth_controller.register(login_field, pw, pw2, invite)
+    if not result.success:
+        return JSONResponse({"error": t(result.error)}, status_code=result.error_code)
+    resp = JSONResponse({"ok": True, "next": "/"})
+    auth_controller.issue_session(request, resp, result.user_id)
     return resp
 
 

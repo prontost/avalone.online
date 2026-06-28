@@ -7,6 +7,7 @@ from fastapi import Depends, HTTPException, Request, status
 from avalone_core.device_service import DeviceService
 from avalone_core.language_service import LanguageService
 from avalone_core.referral_service import ReferralService
+from avalone_landing.config import settings
 from avalone_landing.core.admin_service import AdminService
 from avalone_landing.core.auth_service import AuthService
 from avalone_landing.core.feedback_service import FeedbackService
@@ -14,6 +15,7 @@ from avalone_landing.core.mail_service import MailService
 from avalone_landing.core.models import User
 from avalone_landing.core.role_service import RoleService
 from avalone_landing.core.user_service import UserService
+from avalone_landing.web.auth_controller import AuthController
 
 
 def get_role_service() -> RoleService:
@@ -31,6 +33,14 @@ def get_auth_service() -> AuthService:
 
 def get_mail_service() -> MailService:
     return MailService()
+
+
+def get_auth_controller(
+    auth_service: AuthService = Depends(get_auth_service),
+    user_service: UserService = Depends(get_user_service),
+    mail_service: MailService = Depends(get_mail_service),
+) -> AuthController:
+    return AuthController(auth_service, user_service, mail_service, settings())
 
 
 def get_admin_service() -> AdminService:
