@@ -270,6 +270,11 @@ _PORTAL_SEED_EXTRA: list[dict[str, Any]] = [
                                                      "en": "To install, tap '⋯' in the browser, then Apps → Install Avalone (Chrome/Edge).",
                                                      "ko": "설치하려면 브라우저에서 '⋯' → 앱 → Avalone 설치를 선택하세요 (Chrome/Edge).", "kind": "ui", "module": "portal"},
 
+    # Button feedback states
+    {"key": "ui_sending",                    "ru": "Отправка...",                                         "en": "Sending...",                                 "ko": "전송 중...", "kind": "ui", "module": "portal"},
+    {"key": "ui_sent",                       "ru": "Отправлено",                                          "en": "Sent",                                       "ko": "전송 완료", "kind": "ui", "module": "portal"},
+    {"key": "ui_error",                      "ru": "Ошибка",                                              "en": "Error",                                      "ko": "오류", "kind": "ui", "module": "portal"},
+
     # Search / waitlist
     {"key": "search_result_prefix",          "ru": "Вы искали: ",                                         "en": "You searched: ",                             "ko": "검색: ", "kind": "ui", "module": "portal"},
     {"key": "waitlist_thanks_prefix",        "ru": "Спасибо! Мы запомнили: ",                             "en": "Thanks! We saved: ",                         "ko": "감사합니다! 저장했습니다: ", "kind": "ui", "module": "portal"},

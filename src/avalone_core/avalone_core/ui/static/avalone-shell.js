@@ -59,6 +59,66 @@ window.installAvalonePWA = function() {
   }
 };
 
+// ---------------------------------------------------------------------------
+// Shared button state helper
+// ---------------------------------------------------------------------------
+// Supported states: 'loading', 'success', 'error', 'default'.
+// When text is omitted the original label is preserved and a spinner/icon is
+// shown for non-default states.
+window.setAvaloneButtonState = function(btn, state, text) {
+  if (!btn) return;
+  const spinnerHtml = '<span class="avalone-btn__spinner" aria-hidden="true"></span>';
+  const successIcon = '<svg class="avalone-btn__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
+  const errorIcon = '<svg class="avalone-btn__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+
+  // Store original content on first call
+  if (!btn.dataset.avaloneOriginalHtml) {
+    btn.dataset.avaloneOriginalHtml = btn.innerHTML;
+  }
+
+  btn.classList.remove('avalone-btn--loading', 'avalone-btn--success', 'avalone-btn--error', 'avalone-btn--disabled');
+  btn.disabled = false;
+
+  const labelText = text || btn.innerText || '';
+
+  if (state === 'loading') {
+    btn.disabled = true;
+    btn.classList.add('avalone-btn--loading', 'avalone-btn--disabled');
+    btn.innerHTML = spinnerHtml + '<span>' + labelText + '</span>';
+  } else if (state === 'success') {
+    btn.disabled = true;
+    btn.classList.add('avalone-btn--success', 'avalone-btn--disabled');
+    btn.innerHTML = successIcon + '<span>' + labelText + '</span>';
+  } else if (state === 'error') {
+    btn.classList.add('avalone-btn--error');
+    btn.innerHTML = errorIcon + '<span>' + labelText + '</span>';
+  } else {
+    btn.innerHTML = btn.dataset.avaloneOriginalHtml;
+  }
+};
+
+// Automatically disable submit buttons while a synchronous form is submitting.
+// Async handlers (submitShellFeedback, submitAuthForm, ...) manage the button
+// themselves via setAvaloneButtonState.
+(function _initFormSubmitGuard() {
+  function isAsyncForm(form) {
+    const onsubmit = form.getAttribute('onsubmit');
+    return onsubmit && /submitShellFeedback|submitAuthForm/.test(onsubmit);
+  }
+  document.addEventListener('submit', function(e) {
+    const form = e.target;
+    if (!form || form.tagName !== 'FORM') return;
+    if (isAsyncForm(form)) return; // async handlers will lock their own buttons
+    const btn = form.querySelector('button[type="submit"], input[type="submit"]');
+    if (!btn) return;
+    if (btn.disabled) {
+      e.preventDefault();
+      return;
+    }
+    window.setAvaloneButtonState(btn, 'loading', btn.innerText);
+  }, true);
+})();
+
 (function() {
   'use strict';
 
@@ -256,10 +316,12 @@ window.installAvalonePWA = function() {
     e.preventDefault();
     const form = e.target;
     const status = document.getElementById('avalone-feedback-status');
+    const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
     const message = form.querySelector('[name="message"]').value.trim();
     const contact = form.querySelector('[name="contact"]').value.trim();
     if (!message) return false;
     status.style.display = 'none';
+    window.setAvaloneButtonState(submitBtn, 'loading', AVALONE_I18N.ui_sending || 'Sending...');
     fetch('/api/feedback', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -270,15 +332,20 @@ window.installAvalonePWA = function() {
         status.textContent = AVALONE_I18N.feedback_thanks || 'Thank you';
         status.className = 'feedback-status text-success';
         form.reset();
+        window.setAvaloneButtonState(submitBtn, 'success', AVALONE_I18N.ui_sent || 'Sent');
       }else{
         status.textContent = AVALONE_I18N.feedback_error || 'Could not send';
         status.className = 'feedback-status text-danger';
+        window.setAvaloneButtonState(submitBtn, 'error', AVALONE_I18N.ui_error || 'Error');
       }
       status.style.display = 'block';
+      setTimeout(function() { window.setAvaloneButtonState(submitBtn, 'default'); }, 2000);
     }).catch(function(){
       status.textContent = AVALONE_I18N.feedback_error || 'Could not send';
       status.className = 'feedback-status text-danger';
       status.style.display = 'block';
+      window.setAvaloneButtonState(submitBtn, 'error', AVALONE_I18N.ui_error || 'Error');
+      setTimeout(function() { window.setAvaloneButtonState(submitBtn, 'default'); }, 2000);
     });
     return false;
   };
@@ -353,6 +420,7 @@ window.installAvalonePWA = function() {
 
   window.submitAuthForm = function(form, mode) {
     const status = _authStatus();
+    const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
     if (status) status.style.display = 'none';
     const endpoints = {
       login: '/api/auth/login',
@@ -365,6 +433,7 @@ window.installAvalonePWA = function() {
     const data = new FormData(form);
     const body = {};
     data.forEach(function(value, key){ body[key] = value; });
+    window.setAvaloneButtonState(submitBtn, 'loading', AVALONE_I18N.ui_sending || 'Sending...');
     fetch(url, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -380,8 +449,10 @@ window.installAvalonePWA = function() {
               status.style.display = 'block';
             }
             form.reset();
+            window.setAvaloneButtonState(submitBtn, 'success', AVALONE_I18N.ui_sent || 'Sent');
+            setTimeout(function() { window.setAvaloneButtonState(submitBtn, 'default'); }, 2000);
           } else {
-            // login/register/reset: reload to apply new session
+            // login/register/reset: reload to apply new session; keep loading state
             location.href = payload.next || '/';
           }
         } else {
@@ -390,6 +461,8 @@ window.installAvalonePWA = function() {
             status.className = 'auth-status error';
             status.style.display = 'block';
           }
+          window.setAvaloneButtonState(submitBtn, 'error', AVALONE_I18N.ui_error || 'Error');
+          setTimeout(function() { window.setAvaloneButtonState(submitBtn, 'default'); }, 2000);
         }
       });
     }).catch(function(){
@@ -398,6 +471,8 @@ window.installAvalonePWA = function() {
         status.className = 'auth-status error';
         status.style.display = 'block';
       }
+      window.setAvaloneButtonState(submitBtn, 'error', AVALONE_I18N.ui_error || 'Error');
+      setTimeout(function() { window.setAvaloneButtonState(submitBtn, 'default'); }, 2000);
     });
     return false;
   };
