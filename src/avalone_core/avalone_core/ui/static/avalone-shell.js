@@ -174,6 +174,57 @@ const AVALONE_I18N = window.AVALONE_I18N || {};
     }
   };
 
+  // Feedback modal
+  window.openFeedbackModal = function() {
+    closeAvaloneMenu();
+    const modal = document.getElementById('avalone-feedback-modal');
+    if (modal) {
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+  };
+
+  window.closeFeedbackModal = function() {
+    const modal = document.getElementById('avalone-feedback-modal');
+    if (modal) {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+  };
+
+  window.submitShellFeedback = function(e) {
+    e.preventDefault();
+    const form = e.target;
+    const status = document.getElementById('avalone-feedback-status');
+    const message = form.querySelector('[name="message"]').value.trim();
+    const contact = form.querySelector('[name="contact"]').value.trim();
+    if (!message) return false;
+    status.style.display = 'none';
+    fetch('/api/feedback', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: message, contact: contact, source_page: location.href}),
+      credentials: 'same-origin'
+    }).then(function(r){
+      if(r.ok){
+        status.textContent = AVALONE_I18N.feedback_thanks || 'Thank you';
+        status.className = 'feedback-status text-success';
+        form.reset();
+      }else{
+        status.textContent = AVALONE_I18N.feedback_error || 'Could not send';
+        status.className = 'feedback-status text-danger';
+      }
+      status.style.display = 'block';
+    }).catch(function(){
+      status.textContent = AVALONE_I18N.feedback_error || 'Could not send';
+      status.className = 'feedback-status text-danger';
+      status.style.display = 'block';
+    });
+    return false;
+  };
+
   // Search overlay
   window.openGlobalSearch = function() {
     const overlay = document.getElementById('global-search-overlay');

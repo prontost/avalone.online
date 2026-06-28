@@ -11,6 +11,8 @@ from avalone_core.database import Database
 from avalone_core.device_service import DeviceService
 from avalone_core.language_service import LanguageService
 from avalone_core.referral_service import ReferralService
+from avalone_landing.config import settings
+from avalone_landing.core.mail_service import MailService
 from avalone_landing.core.models import User
 from avalone_landing.web.dependencies import current_user
 
@@ -20,6 +22,30 @@ router = APIRouter()
 def _client_ip(request: Request) -> str:
     fwd = request.headers.get("x-forwarded-for", "")
     return fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "?")
+
+
+def _notify_admins_about_feedback(message: str, contact: str, source_page: str) -> None:
+    cfg = settings()
+    recipients = [e.strip() for e in cfg.admin_email.split(",") if "@" in e.strip()]
+    if not recipients:
+        return
+    subject = "[Avalone] Новое сообщение авторам"
+    body_lines = ["Получено новое сообщение через форму обратной связи.", ""]
+    if contact:
+        body_lines.append(f"Контакт: {contact}")
+    body_lines.append(f"Источник: {source_page or 'неизвестен'}")
+    body_lines.append("")
+    body_lines.append("Сообщение:")
+    body_lines.append(message)
+    body_lines.append("")
+    body_lines.append("Ответить удобнее всего через админку: https://avalone.online/admin/feedback")
+    body = "\n".join(body_lines)
+    mail = MailService(cfg)
+    for recipient in recipients:
+        try:
+            mail.send_email(recipient, subject, body)
+        except Exception:
+            pass
 
 
 @router.post("/api/lang")
@@ -108,4 +134,5 @@ async def submit_feedback(
             (user.id if user else None, source_page, contact, message, created_at),
         )
         con.commit()
+    _notify_admins_about_feedback(message, contact, source_page)
     return {"ok": True}

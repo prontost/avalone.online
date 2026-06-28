@@ -5,12 +5,15 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
 
 from avalone_core import glossary_db as glossary
+from avalone_core.database import Database
 from avalone_core.registry import AvaloneRegistry
 from avalone_core.ui import Button, Card, PageHeader
 import avalone_core.ui
@@ -34,6 +37,7 @@ _ADMIN_NAV = [
         "entries": [
             {"label": glossary.t("admin_menu_dashboard"), "url": "/admin", "icon": "▣"},
             {"label": glossary.t("admin_menu_users"), "url": "/admin/users", "icon": "👤"},
+            {"label": glossary.t("admin_menu_feedback"), "url": "/admin/feedback", "icon": "✉"},
             {"label": glossary.t("admin_menu_settings"), "url": "/admin/settings", "icon": "⚙"},
         ],
     }
@@ -158,3 +162,40 @@ async def admin_settings(
     ctx["settings"] = admin_service.list_server_settings()
     ctx["header"] = PageHeader(title=glossary.t("admin_settings_title")).render(templates.env, request)
     return templates.TemplateResponse(request, "admin/settings.html", ctx)
+
+
+@router.get("/admin/feedback", response_class=HTMLResponse)
+async def admin_feedback(
+    request: Request,
+    admin: User = Depends(require_permission("users:manage")),
+):
+    with Database.shared().connection() as con:
+        rows = con.execute(
+            "SELECT f.id, f.user_id, f.source_page, f.contact, f.message, f.created_at, "
+            "u.login, u.email "
+            "FROM avalone_feedback f "
+            "LEFT JOIN users u ON u.id = f.user_id "
+            "ORDER BY f.created_at DESC "
+            "LIMIT 200"
+        ).fetchall()
+    items = []
+    for row in rows:
+        items.append(
+            {
+                "id": row["id"],
+                "user_id": row["user_id"],
+                "login": row["login"] or "",
+                "email": row["email"] or "",
+                "contact": row["contact"] or "",
+                "source_page": row["source_page"] or "",
+                "message": row["message"],
+                "created_at": row["created_at"],
+            }
+        )
+    ctx = _admin_shell_context(
+        request, {"id": admin.id, "login": admin.login}, active_path="/admin/feedback"
+    )
+    ctx["items"] = items
+    ctx["now"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    ctx["header"] = PageHeader(title=glossary.t("admin_feedback_title")).render(templates.env, request)
+    return templates.TemplateResponse(request, "admin/feedback.html", ctx)

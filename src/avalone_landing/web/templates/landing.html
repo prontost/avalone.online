@@ -54,21 +54,6 @@
     {% endfor %}
   </main>
 
-  <div class="teaser-panel" id="feedbackPanel">
-    <div class="teaser-title">{{ t('feedback_title', lang=lang) }}</div>
-    <p class="teaser-text">{{ t('feedback_text', lang=lang) }}</p>
-    <form class="teaser-form feedback-form" id="feedbackForm" onsubmit="return submitFeedback(event)">
-      <label class="avalone-label">{{ t('feedback_message_label', lang=lang) }}
-        <textarea class="teaser-input" name="message" rows="3" required maxlength="4000" placeholder="{{ t('feedback_message_placeholder', lang=lang) }}"></textarea>
-      </label>
-      <label class="avalone-label">{{ t('feedback_contact_label', lang=lang) }}
-        <input class="teaser-input" type="text" name="contact" maxlength="255" placeholder="{{ t('feedback_contact_placeholder', lang=lang) }}">
-      </label>
-      <button class="teaser-btn" type="submit">{{ t('feedback_btn', lang=lang) }}</button>
-    </form>
-    <p class="feedback-status" id="feedbackStatus" style="display:none;margin-top:0.75rem;"></p>
-  </div>
-
   <footer>
     <span>{{ t('footer', lang=lang) }}</span>
   </footer>
@@ -179,8 +164,6 @@ function installPWA(){
 const COMING_SOON = {{ t('coming_soon', lang=lang) | tojson }};
 const SEARCH_PLACEHOLDER = {{ t('search_placeholder', lang=lang) | tojson }};
 const SEARCH_RESULT_PREFIX = {{ t('search_result_prefix', lang=lang) | tojson }};
-const FEEDBACK_THANKS = {{ t('feedback_thanks', lang=lang) | tojson }};
-const FEEDBACK_ERROR = {{ t('feedback_error', lang=lang) | tojson }};
 
 function showComingSoon(name){
   alert(COMING_SOON + name);
@@ -189,35 +172,6 @@ function showComingSoon(name){
 function showSearch(){
   var q = prompt(SEARCH_PLACEHOLDER);
   if(q) alert(SEARCH_RESULT_PREFIX + q);
-}
-function submitFeedback(e){
-  e.preventDefault();
-  var form = e.target;
-  var status = document.getElementById('feedbackStatus');
-  var message = form.querySelector('[name="message"]').value.trim();
-  var contact = form.querySelector('[name="contact"]').value.trim();
-  if(!message) return false;
-  status.style.display = 'none';
-  fetch('/api/feedback', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({message: message, contact: contact, source_page: location.href})
-  }).then(function(r){
-    if(r.ok){
-      status.textContent = FEEDBACK_THANKS;
-      status.className = 'feedback-status text-success';
-      form.reset();
-    }else{
-      status.textContent = FEEDBACK_ERROR;
-      status.className = 'feedback-status text-danger';
-    }
-    status.style.display = 'block';
-  }).catch(function(){
-    status.textContent = FEEDBACK_ERROR;
-    status.className = 'feedback-status text-danger';
-    status.style.display = 'block';
-  });
-  return false;
 }
 
 (function initRefCode(){

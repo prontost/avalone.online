@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     mail_from: str = "noreply@avalone.online"
     mail_from_name: str = "Avalone"
 
+    # Comma-separated list of admin addresses to notify about new feedback.
+    admin_email: str = ""
+
 
 @lru_cache
 def settings() -> Settings:

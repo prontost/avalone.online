@@ -1,0 +1,54 @@
+{% extends "avalone_base.html" %}
+
+{% block title %}{{ t('admin_feedback_title', lang=lang) }} — {{ t('brand', lang=lang) }}{% endblock %}
+
+{% block content %}
+<div class="avalone-container">
+  {{ header|safe }}
+
+  <div class="avalone-card">
+    <h3 class="mt-0">{{ t('admin_feedback_list_title', lang=lang) }}</h3>
+    {% if items %}
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>{{ t('admin_feedback_col_time', lang=lang) }}</th>
+            <th>{{ t('admin_feedback_col_user', lang=lang) }}</th>
+            <th>{{ t('admin_feedback_col_contact', lang=lang) }}</th>
+            <th>{{ t('admin_feedback_col_message', lang=lang) }}</th>
+            <th>{{ t('admin_feedback_col_source', lang=lang) }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td class="text-nowrap">{{ item.created_at }}</td>
+            <td>
+              {% if item.user_id %}
+              <a href="/admin/users/{{ item.user_id }}">{{ item.login or item.user_id }}</a>
+              <br><small class="text-muted">{{ item.email }}</small>
+              {% else %}
+              <span class="text-muted">{{ t('admin_feedback_anonymous', lang=lang) }}</span>
+              {% endif %}
+            </td>
+            <td>{{ item.contact or '—' }}</td>
+            <td style="white-space:pre-wrap">{{ item.message }}</td>
+            <td>
+              {% if item.source_page %}
+              <a href="{{ item.source_page }}" target="_blank" rel="noopener">{{ item.source_page[:60] }}</a>
+              {% else %}
+              —
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted">{{ t('admin_feedback_empty', lang=lang) }}</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
