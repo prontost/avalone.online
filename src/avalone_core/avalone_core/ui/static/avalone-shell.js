@@ -225,6 +225,14 @@ const AVALONE_I18N = window.AVALONE_I18N || {};
     return false;
   };
 
+  // Multi-profile dropdown
+  window.toggleProfileDropdown = function() {
+    const dropdown = document.getElementById('avalone-profile-dropdown');
+    const switcher = document.querySelector('.avalone-profile-switcher');
+    if (dropdown) dropdown.classList.toggle('open');
+    if (switcher) switcher.classList.toggle('open');
+  };
+
   // Search overlay
   window.openGlobalSearch = function() {
     const overlay = document.getElementById('global-search-overlay');

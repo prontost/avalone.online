@@ -33,7 +33,7 @@ async def current_user(
     auth_service: AuthService = Depends(get_auth_service),
     user_service: UserService = Depends(get_user_service),
 ) -> User | None:
-    user_id = auth_service.user_id_of(request)
+    user_id = auth_service.active_user_id(request)
     if not user_id:
         return None
     return user_service.get_user(user_id)

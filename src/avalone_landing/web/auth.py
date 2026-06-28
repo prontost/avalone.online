@@ -84,9 +84,10 @@ async def login_page(
     auth_service: AuthService = Depends(get_auth_service),
     user: User | None = Depends(current_user),
 ):
-    if user is not None or auth_service.user_id_of(request):
-        return RedirectResponse("/", status_code=303)
-    ctx: dict = {}
+    if user is not None:
+        ctx: dict = {"already_user": {"id": user.id, "login": user.login, "name": user.name, "email": user.email}}
+    else:
+        ctx = {}
     if request.query_params.get("reset") == "ok":
         ctx["success"] = t("reset_password_success")
     return templates.TemplateResponse(request, "login.html", _anon_shell_context(request, **ctx))
@@ -120,8 +121,6 @@ async def forgot_password_page(
     auth_service: AuthService = Depends(get_auth_service),
     user: User | None = Depends(current_user),
 ):
-    if user is not None or auth_service.user_id_of(request):
-        return RedirectResponse("/", status_code=303)
     return templates.TemplateResponse(request, "forgot_password.html", _anon_shell_context(request))
 
 
@@ -292,7 +291,24 @@ async def logout(
     auth_service: AuthService = Depends(get_auth_service),
 ):
     resp = RedirectResponse("/", status_code=303)
-    auth_service.clear_session(request, resp)
+    auth_service.clear_active_session(request, resp)
+    return resp
+
+
+@router.post("/switch-user")
+async def switch_user(
+    request: Request,
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    form = await request.form()
+    try:
+        target_id = int(form.get("user_id", 0))
+    except Exception:
+        target_id = 0
+    if not target_id:
+        return RedirectResponse("/", status_code=303)
+    resp = RedirectResponse("/", status_code=303)
+    auth_service.switch_active(request, resp, target_id)
     return resp
 
 
@@ -302,7 +318,7 @@ async def auth_me(
     user_service: UserService = Depends(get_user_service),
     auth_service: AuthService = Depends(get_auth_service),
 ):
-    user_id = auth_service.user_id_of(request)
+    user_id = auth_service.active_user_id(request)
     if not user_id:
         return JSONResponse({"error": t("error_unauthorized")}, status_code=401)
     user = user_service.get_user(user_id)
@@ -325,7 +341,7 @@ async def auth_refresh(
     user_service: UserService = Depends(get_user_service),
 ):
     """Prolong the session cookie."""
-    user_id = auth_service.user_id_of(request)
+    user_id = auth_service.active_user_id(request)
     if not user_id:
         return JSONResponse({"error": t("error_unauthorized")}, status_code=401)
     user = user_service.get_user(user_id)

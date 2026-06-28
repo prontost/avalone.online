@@ -14,9 +14,9 @@ def _session_token_from(response) -> str:
     set_cookie = response.headers.get("set-cookie") or ""
     for part in set_cookie.split(";"):
         part = part.strip()
-        if part.startswith("avalone_session="):
+        if part.startswith("avalone_sessions="):
             return part.split("=", 1)[1]
-    raise RuntimeError("no avalone_session cookie in response")
+    raise RuntimeError("no avalone_sessions cookie in response")
 
 
 def _auth_client(login: str, password: str = "password", invite: str = "") -> TestClient:
@@ -29,7 +29,7 @@ def _auth_client(login: str, password: str = "password", invite: str = "") -> Te
     )
     assert resp.status_code == 303, resp.text
     token = _session_token_from(resp)
-    client.headers["Cookie"] = f"avalone_session={token}"
+    client.headers["Cookie"] = f"avalone_sessions={token}"
     return client
 
 

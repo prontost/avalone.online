@@ -260,6 +260,7 @@ _PORTAL_SEED_EXTRA: list[dict[str, Any]] = [
     {"key": "shell_logout",                  "ru": "Выйти",                                               "en": "Log out",                                    "ko": "로그아웃", "kind": "ui", "module": "portal"},
     {"key": "shell_profile",                 "ru": "Профиль",                                             "en": "Profile",                                    "ko": "프로필", "kind": "ui", "module": "portal"},
     {"key": "shell_feedback",                "ru": "Сообщение авторам",                                   "en": "Message to authors",                         "ko": "작성자에게 메시지", "kind": "ui", "module": "portal"},
+    {"key": "shell_active_profile",          "ru": "активен",                                             "en": "active",                                     "ko": "활성", "kind": "ui", "module": "portal"},
 
     # PWA manifest
     {"key": "manifest_name",                 "ru": "Avalone",                                             "en": "Avalone",                                    "ko": "Avalone", "kind": "ui", "module": "portal"},

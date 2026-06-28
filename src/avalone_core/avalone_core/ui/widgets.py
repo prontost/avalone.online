@@ -68,6 +68,7 @@ class Shell(Widget):
     template_name: str = "shell.html"
     current_app: str = "portal"
     user: Any = None
+    sessions: List[Any] = field(default_factory=list)
     branches: List[Any] = field(default_factory=list)
     app_nav: List[Any] = field(default_factory=list)
     breadcrumbs: List[Any] = field(default_factory=list)
@@ -104,6 +105,7 @@ class Shell(Widget):
             "shell": self,
             "current_app": self.current_app,
             "user": self.user,
+            "sessions": self.sessions,
             "branches": self.branches,
             "app_nav": self.app_nav,
             "active_branch": self.active_branch,

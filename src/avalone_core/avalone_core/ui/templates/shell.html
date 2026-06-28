@@ -74,10 +74,40 @@
 
       <div class="avalone-menu__section">
         {% if user %}
-        <a class="avalone-menu__row" href="https://avalone.online/profile">
-          <span class="avalone-menu__avatar">{{ (user.login or 'G')[0].upper() }}</span>
-          <span>{{ t('shell_profile', lang=lang) }}</span>
-        </a>
+        {% if sessions|length > 1 %}
+        <div class="avalone-menu__row avalone-profile-switcher">
+          <button type="button" class="avalone-profile-switcher__current" onclick="toggleProfileDropdown()">
+            <span class="avalone-menu__avatar">{{ (user.login or 'G')[0].upper() }}</span>
+            <span class="avalone-profile-switcher__name">{{ user.name or user.login }}</span>
+            <svg class="avalone-profile-switcher__arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <a class="avalone-icon-btn" href="https://avalone.online/profile" aria-label="{{ t('shell_profile', lang=lang) }}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </a>
+        </div>
+        <div class="avalone-profile-dropdown" id="avalone-profile-dropdown">
+          {% for s in sessions %}
+          <form method="post" action="/switch-user" class="avalone-profile-dropdown__item">
+            <input type="hidden" name="user_id" value="{{ s.id }}">
+            <button type="submit" class="avalone-profile-dropdown__btn{% if s.active %} active{% endif %}">
+              <span class="avalone-menu__avatar">{{ (s.login or 'G')[0].upper() }}</span>
+              <span class="avalone-profile-dropdown__name">{{ s.name or s.login }}</span>
+              {% if s.active %}<span class="avalone-badge avalone-badge-green">{{ t('shell_active_profile', lang=lang) }}</span>{% endif %}
+            </button>
+          </form>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="avalone-menu__row">
+          <a class="avalone-menu__row" href="https://avalone.online/profile" style="padding:0;flex:1;gap:12px;background:transparent;">
+            <span class="avalone-menu__avatar">{{ (user.login or 'G')[0].upper() }}</span>
+            <span>{{ user.name or user.login }}</span>
+          </a>
+          <a class="avalone-icon-btn" href="https://avalone.online/profile" aria-label="{{ t('shell_profile', lang=lang) }}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </a>
+        </div>
+        {% endif %}
         {% if user.is_admin %}
         <a class="avalone-menu__row" href="https://avalone.online/admin">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>

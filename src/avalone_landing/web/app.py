@@ -59,7 +59,7 @@ _auth_service = AuthService()
 
 @app.middleware("http")
 async def current_user_ctx(request: Request, call_next):
-    user_id = _auth_service.user_id_of(request)
+    user_id = _auth_service.active_user_id(request)
     users.set_current(user_id)
     return await call_next(request)
 
