@@ -255,6 +255,7 @@ _PORTAL_SEED_EXTRA: list[dict[str, Any]] = [
     {"key": "manifest_description",          "ru": "Ваши инструменты в одном месте.",                     "en": "Your tools in one place.",                   "ko": "모든 도구가 한 곳에.", "kind": "ui", "module": "portal"},
 
     # PWA install hints
+    {"key": "install_app",                   "ru": "📲 Установить приложение",                            "en": "📲 Install app",                             "ko": "📲 앱 설치", "kind": "ui", "module": "portal"},
     {"key": "pwa_already_installed",         "ru": "Приложение уже установлено.",                         "en": "App is already installed.",                  "ko": "앱이 이미 설치되어 있습니다.", "kind": "ui", "module": "portal"},
     {"key": "pwa_install_ios_safari",        "ru": "На iPhone нажмите кнопку «Поделиться» внизу Safari, затем выберите «На экран «Домой»».",
                                                      "en": "On iPhone, tap the Share button at the bottom of Safari, then choose 'Add to Home Screen'.",

@@ -2,6 +2,63 @@
 
 const AVALONE_I18N = window.AVALONE_I18N || {};
 
+// PWA install prompt (shared across all shell pages)
+let _avaloneInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  _avaloneInstallPrompt = e;
+});
+
+window.addEventListener('appinstalled', function() {
+  _avaloneInstallPrompt = null;
+});
+
+function _isAvaloneStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         window.navigator.standalone === true;
+}
+
+function _isAvaloneIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+
+function _isAvaloneIOSSafari() {
+  return _isAvaloneIOS() && /Safari/.test(navigator.userAgent) && !/CriOS/.test(navigator.userAgent);
+}
+
+function _isAvaloneAndroid() {
+  return /Android/.test(navigator.userAgent);
+}
+
+window.installAvalonePWA = function() {
+  closeAvaloneMenu();
+  if (_isAvaloneStandalone()) {
+    alert(AVALONE_I18N.pwa_already_installed || 'App is already installed.');
+    return;
+  }
+  if (_isAvaloneIOSSafari()) {
+    alert(AVALONE_I18N.pwa_install_ios_safari || 'Tap Share in Safari, then Add to Home Screen.');
+    return;
+  }
+  if (_isAvaloneIOS()) {
+    alert(AVALONE_I18N.pwa_install_ios_other || 'Open this site in Safari and tap Share → Add to Home Screen.');
+    return;
+  }
+  if (_avaloneInstallPrompt) {
+    _avaloneInstallPrompt.prompt();
+    _avaloneInstallPrompt.userChoice.then(function(choice) {
+      _avaloneInstallPrompt = null;
+    });
+    return;
+  }
+  if (_isAvaloneAndroid()) {
+    alert(AVALONE_I18N.pwa_install_android || 'Tap ⋮ in Chrome and choose Add to Home screen.');
+  } else {
+    alert(AVALONE_I18N.pwa_install_desktop || 'Use your browser menu to install this app.');
+  }
+};
+
 (function() {
   'use strict';
 
