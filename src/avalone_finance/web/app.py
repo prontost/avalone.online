@@ -24,6 +24,7 @@ from avalone_core.ui import Shell, build_id as ui_build_id
 import avalone_core.ui
 from avalone_finance.core import constants, db, external_auth, security, tenant
 from avalone_finance.core.config import settings
+from avalone_finance.core.external_auth import FinanceAuthProvider
 from avalone_finance.core.glossary_seed import seed as _seed_glossary
 from avalone_finance.web.api import router as api_router
 
@@ -95,6 +96,7 @@ def _build_id() -> str:
 
 
 BUILD_ID = _build_id()
+_auth_provider = FinanceAuthProvider()
 
 
 def _relative_path(request: Request) -> str:
@@ -151,7 +153,7 @@ async def admin_dashboard(request: Request):
     avalone_uid = external_auth.user_id_of(request)
     if not avalone_uid or not tenant.is_admin(avalone_uid):
         return RedirectResponse("/finance/admin/login", status_code=303)
-    lang = LanguageService(auth_service=external_auth).detect(request)
+    lang = LanguageService(auth_service=_auth_provider).detect(request)
     return _no_cache(templates.TemplateResponse(request, "admin_dashboard.html", {
         "build_id": BUILD_ID,
         "user": tenant.get_user(avalone_uid),
@@ -168,9 +170,9 @@ def _no_cache(resp):
 
 
 def _shell_context_for(request: Request, user, current_app: str = "money"):
-    lang = LanguageService(auth_service=external_auth).detect(request)
+    lang = LanguageService(auth_service=_auth_provider).detect(request)
     branches = AvaloneRegistry.for_shell(lang)
-    shell = Shell(current_app=current_app, user=user, branches=branches, app_nav=[], lang=lang)
+    shell = Shell(current_app=current_app, user=user, branches=branches, app_nav=[], lang=lang, portal_url=settings().avalone_base_url)
     return {
         "build_id": BUILD_ID,
         "user": user,
