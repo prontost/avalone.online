@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
+from avalone_core.database import Database
 from avalone_core.device_service import DeviceService
 from avalone_core.language_service import LanguageService
 from avalone_core.referral_service import ReferralService
@@ -81,3 +84,28 @@ async def heartbeat(request: Request, user: User | None = Depends(current_user))
         seconds,
     )
     return result
+
+
+@router.post("/api/feedback")
+async def submit_feedback(
+    request: Request,
+    user: User | None = Depends(current_user),
+):
+    body = await request.json()
+    message = str(body.get("message", "")).strip()
+    contact = str(body.get("contact", "")).strip()[:255]
+    source_page = str(body.get("source_page", "")).strip()[:255] or request.headers.get("referer", "")
+    if not message or len(message) < 2:
+        return JSONResponse({"error": "message_too_short"}, status_code=400)
+    if len(message) > 4000:
+        return JSONResponse({"error": "message_too_long"}, status_code=400)
+
+    created_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    with Database.shared().connection() as con:
+        con.execute(
+            "INSERT INTO avalone_feedback (user_id, source_page, contact, message, created_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (user.id if user else None, source_page, contact, message, created_at),
+        )
+        con.commit()
+    return {"ok": True}

@@ -254,6 +254,16 @@ CREATE TABLE IF NOT EXISTS avalone_referrals (
     created_at        TEXT NOT NULL,
     UNIQUE(invitee_id)
 );
+
+CREATE TABLE IF NOT EXISTS avalone_feedback (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    source_page TEXT DEFAULT '',
+    contact     TEXT DEFAULT '',
+    message     TEXT NOT NULL,
+    created_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_avalone_feedback_created ON avalone_feedback(created_at);
 """
 
 

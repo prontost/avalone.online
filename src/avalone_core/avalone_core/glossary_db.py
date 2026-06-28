@@ -81,6 +81,18 @@ _PORTAL_SEED: list[dict[str, Any]] = [
                                 "ko": "연락처를 남기시면 모듈을 사용할 수 있게 되면 알려드립니다.", "kind": "ui", "module": "portal"},
     {"key": "teaser_placeholder", "ru": "Telegram / KakaoTalk / email", "en": "Telegram / KakaoTalk / email", "ko": "Telegram / KakaoTalk / email", "kind": "ui", "module": "portal"},
     {"key": "teaser_btn",   "ru": "Сообщить",   "en": "Notify me", "ko": "알림 받기", "kind": "ui", "module": "portal"},
+    {"key": "feedback_title",         "ru": "Сообщение авторам",                           "en": "Message to the authors",                    "ko": "작성자에게 메시지", "kind": "ui", "module": "portal"},
+    {"key": "feedback_text",          "ru": "Расскажите, что важно для вас, или задайте вопрос. Мы читаем всё.",
+                                            "en": "Tell us what matters to you or ask a question. We read everything.",
+                                            "ko": "중요한 점이나 질문을 남겨주세요. 모두 읽고 있습니다.", "kind": "ui", "module": "portal"},
+    {"key": "feedback_contact_label", "ru": "Как с вами связаться (необязательно)",         "en": "How to reach you (optional)",               "ko": "연락처 (선택)", "kind": "ui", "module": "portal"},
+    {"key": "feedback_message_label", "ru": "Сообщение",                                   "en": "Message",                                   "ko": "메시지", "kind": "ui", "module": "portal"},
+    {"key": "feedback_contact_placeholder","ru": "Telegram / KakaoTalk / email",            "en": "Telegram / KakaoTalk / email",              "ko": "Telegram / KakaoTalk / email", "kind": "ui", "module": "portal"},
+    {"key": "feedback_message_placeholder","ru": "Ваше сообщение...",                       "en": "Your message...",                           "ko": "메시지를 입력하세요...", "kind": "ui", "module": "portal"},
+    {"key": "feedback_btn",           "ru": "Отправить",                                   "en": "Send",                                      "ko": "전송", "kind": "ui", "module": "portal"},
+
+    {"key": "feedback_thanks",        "ru": "Спасибо, сообщение отправлено.",              "en": "Thank you, your message has been sent.",    "ko": "메시지가 전송되었습니다. 감사합니다.", "kind": "ui", "module": "portal"},
+    {"key": "feedback_error",         "ru": "Не удалось отправить. Попробуйте ещё раз.",   "en": "Could not send. Please try again.",         "ko": "전송하지 못했습니다. 다시 시도해주세요.", "kind": "ui", "module": "portal"},
     {"key": "footer",       "ru": "© Avalone — ваши инструменты в одном месте", "en": "© Avalone — your tools in one place", "ko": "© Avalone — 모든 도구가 한 곳에", "kind": "ui", "module": "portal"},
 
     # Bottom nav
