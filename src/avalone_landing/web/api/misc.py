@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
+from avalone_core import glossary_db as glossary
 from avalone_core.database import Database
 from avalone_core.device_service import DeviceService
 from avalone_core.language_service import LanguageService
@@ -14,9 +15,11 @@ from avalone_core.referral_service import ReferralService
 from avalone_landing.config import settings
 from avalone_landing.core.mail_service import MailService
 from avalone_landing.core.models import User
-from avalone_landing.web.dependencies import current_user
+from avalone_landing.core.user_service import UserService
+from avalone_landing.web.dependencies import current_user, get_mail_service, get_user_service
 
 router = APIRouter()
+t = glossary.t
 
 
 def _client_ip(request: Request) -> str:
@@ -135,4 +138,32 @@ async def submit_feedback(
         )
         con.commit()
     _notify_admins_about_feedback(message, contact, source_page)
+    return {"ok": True}
+
+
+@router.post("/api/request-password-reset")
+async def request_password_reset_for_current_user(
+    request: Request,
+    user: User = Depends(current_user),
+    user_service: UserService = Depends(get_user_service),
+    mail_service: MailService = Depends(get_mail_service),
+):
+    if user is None:
+        return JSONResponse({"error": t("error_unauthorized")}, status_code=401)
+    if not user.email or not user.email_verified:
+        return JSONResponse({"error": t("profile_reset_email_required")}, status_code=400)
+    result = user_service.request_password_reset(user.login)
+    if not result:
+        return JSONResponse({"error": t("error_user_not_found")}, status_code=404)
+    reset_user, token = result
+    reset_url = f"{settings().web_base_url}/reset-password?token={token}"
+    subject = t("reset_email_subject")
+    body = t("reset_email_body").format(login=reset_user.login, url=reset_url)
+    try:
+        mail_service.send_email(reset_user.email, subject, body)
+    except Exception as exc:
+        return JSONResponse(
+            {"error": t("profile_reset_send_failed").format(error=str(exc))},
+            status_code=500,
+        )
     return {"ok": True}

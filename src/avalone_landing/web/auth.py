@@ -357,38 +357,6 @@ async def profile_page(
     return templates.TemplateResponse(request, "profile.html", ctx)
 
 
-@router.post("/profile/password")
-async def change_password(
-    request: Request,
-    user: User = Depends(current_user),
-    user_service: UserService = Depends(get_user_service),
-):
-    if user is None:
-        return JSONResponse({"error": t("error_unauthorized")}, status_code=401)
-    form = await request.form()
-    current = str(form.get("current_password", ""))
-    new_pw = str(form.get("new_password", ""))
-    new_pw2 = str(form.get("new_password2", ""))
-
-    if new_pw != new_pw2:
-        return templates.TemplateResponse(
-            request, "profile.html", _profile_context(request, user_service, user, error=t("profile_password_mismatch")), status_code=400
-        )
-    try:
-        ok = user_service.change_password(user.id, current, new_pw)
-    except ValueError as e:
-        return templates.TemplateResponse(
-            request, "profile.html", _profile_context(request, user_service, user, error=str(e)), status_code=400
-        )
-    if not ok:
-        return templates.TemplateResponse(
-            request, "profile.html", _profile_context(request, user_service, user, error=t("profile_current_password_wrong")), status_code=400
-        )
-    return templates.TemplateResponse(
-        request, "profile.html", _profile_context(request, user_service, user, success=t("profile_password_changed"))
-    )
-
-
 @router.post("/profile/name")
 async def update_profile_name(
     request: Request,

@@ -69,26 +69,43 @@
 
   <div class="avalone-card">
     <h3 class="mt-0">{{ t('profile_section_security', lang=lang) }}</h3>
-    <form class="avalone-stack" method="post" action="/profile/password">
-      <label class="avalone-label">{{ t('profile_label_current_password', lang=lang) }}
-        <input class="avalone-input" type="password" name="current_password" required autocomplete="current-password">
-      </label>
-      <div class="avalone-auth-forgot">
-        <a href="/forgot-password">{{ t('reset_forgot_link', lang=lang) }}</a>
+    <div class="avalone-menu__row" style="padding:0;gap:1rem;">
+      <div>
+        <div class="text-muted" style="font-size:13px">{{ t('profile_password_label', lang=lang) }}</div>
+        <div>{{ t('profile_password_masked', lang=lang) }}</div>
       </div>
-      <label class="avalone-label">{{ t('profile_label_new_password', lang=lang) }}
-        <input class="avalone-input" type="password" name="new_password" required minlength="6" autocomplete="new-password">
-      </label>
-      <label class="avalone-label">{{ t('profile_label_new_password2', lang=lang) }}
-        <input class="avalone-input" type="password" name="new_password2" required minlength="6" autocomplete="new-password">
-      </label>
-      <button class="avalone-btn avalone-btn-primary" type="submit">{{ t('profile_btn_change_password', lang=lang) }}</button>
-    </form>
+      <button class="avalone-btn avalone-btn-secondary" type="button" onclick="openProfileResetModal()">{{ t('profile_btn_reset_password', lang=lang) }}</button>
+    </div>
   </div>
 
   <div class="avalone-card">
     <h3 class="mt-0">{{ t('profile_section_session', lang=lang) }}</h3>
     <a href="/logout" class="avalone-btn avalone-btn-danger">{{ t('profile_btn_logout', lang=lang) }}</a>
+  </div>
+</div>
+
+<div class="avalone-modal" id="profile-reset-modal" aria-hidden="true">
+  <div class="avalone-modal__backdrop" onclick="closeProfileResetModal()"></div>
+  <div class="avalone-modal__panel">
+    <div class="avalone-modal__header">
+      <span class="avalone-modal__title">{{ t('profile_reset_title', lang=lang) }}</span>
+      <button type="button" class="avalone-icon-btn" onclick="closeProfileResetModal()" aria-label="{{ t('shell_close_menu', lang=lang) }}">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="avalone-modal__body">
+      <p id="profile-reset-text" style="margin-top:0">
+        {% if user.email and user.email_verified %}
+        {{ t('profile_reset_text', lang=lang).format(email=user.email) }}
+        {% else %}
+        {{ t('profile_reset_email_required', lang=lang) }}
+        {% endif %}
+      </p>
+      {% if user.email and user.email_verified %}
+      <button type="button" class="avalone-btn avalone-btn-primary" id="profile-reset-btn" onclick="requestProfileReset()">{{ t('profile_reset_btn_send', lang=lang) }}</button>
+      {% endif %}
+      <p class="feedback-status" id="profile-reset-status" style="display:none;margin-top:0.75rem;"></p>
+    </div>
   </div>
 </div>
 
@@ -104,5 +121,50 @@ function formatSeconds(total){
   if(today) today.textContent = formatSeconds(parseInt(today.textContent, 10) || 0);
   if(total) total.textContent = formatSeconds(parseInt(total.textContent, 10) || 0);
 })();
+
+function openProfileResetModal(){
+  var modal = document.getElementById('profile-reset-modal');
+  if(modal){
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden','false');
+    document.body.style.overflow = 'hidden';
+  }
+}
+function closeProfileResetModal(){
+  var modal = document.getElementById('profile-reset-modal');
+  if(modal){
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden','true');
+    document.body.style.overflow = '';
+  }
+}
+function requestProfileReset(){
+  var status = document.getElementById('profile-reset-status');
+  var btn = document.getElementById('profile-reset-btn');
+  status.style.display = 'none';
+  if(btn) btn.disabled = true;
+  fetch('/api/request-password-reset', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin'
+  }).then(function(r){
+    if(r.ok){
+      status.textContent = {{ t('profile_reset_sent', lang=lang) | tojson }};
+      status.className = 'feedback-status text-success';
+    }else{
+      return r.json().then(function(data){
+        status.textContent = data.error || {{ t('profile_reset_send_failed', lang=lang) | tojson }};
+        status.className = 'feedback-status text-danger';
+      });
+    }
+    status.style.display = 'block';
+    if(btn) btn.disabled = false;
+  }).catch(function(){
+    status.textContent = {{ t('profile_reset_send_failed', lang=lang) | tojson }};
+    status.className = 'feedback-status text-danger';
+    status.style.display = 'block';
+    if(btn) btn.disabled = false;
+  });
+}
 </script>
 {% endblock %}
