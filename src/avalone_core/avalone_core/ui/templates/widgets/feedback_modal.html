@@ -1,0 +1,24 @@
+<div class="avalone-modal" id="avalone-feedback-modal" aria-hidden="true">
+  <div class="avalone-modal__backdrop" onclick="closeFeedbackModal()"></div>
+  <div class="avalone-modal__panel">
+    <div class="avalone-modal__header">
+      <span class="avalone-modal__title">{{ t('feedback_title', lang=widget.lang) }}</span>
+      <button type="button" class="avalone-icon-btn" onclick="closeFeedbackModal()" aria-label="{{ t('shell_close_menu', lang=widget.lang) }}">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="avalone-modal__body">
+      <p class="text-muted" style="margin-top:0">{{ t('feedback_text', lang=widget.lang) }}</p>
+      <form class="avalone-stack" id="avalone-feedback-form" onsubmit="return submitShellFeedback(event)">
+        <label class="avalone-label">{{ t('feedback_message_label', lang=widget.lang) }}
+          <textarea class="avalone-input" name="message" rows="4" required maxlength="4000" placeholder="{{ t('feedback_message_placeholder', lang=widget.lang) }}"></textarea>
+        </label>
+        <label class="avalone-label">{{ t('feedback_contact_label', lang=widget.lang) }}
+          <input class="avalone-input" type="text" name="contact" maxlength="255" placeholder="{{ t('feedback_contact_placeholder', lang=widget.lang) }}">
+        </label>
+        <button type="submit" class="avalone-btn avalone-btn-primary">{{ t('feedback_btn', lang=widget.lang) }}</button>
+      </form>
+      <p class="feedback-status" id="avalone-feedback-status" style="display:none;margin-top:0.75rem;"></p>
+    </div>
+  </div>
+</div>

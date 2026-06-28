@@ -11,6 +11,7 @@ from avalone_core.language_service import LanguageService
 from avalone_core.registry import AvaloneRegistry
 from avalone_core.ui import Shell
 import avalone_core.ui
+from avalone_landing.config import settings
 from avalone_landing.core.auth_service import AuthService
 from avalone_landing.core.user_service import UserService
 from avalone_landing.web.widgets import AuthModal
@@ -75,6 +76,7 @@ def render_shell_context(
         branches=branches,
         app_nav=app_nav or [],
         lang=lang,
+        portal_url=settings().web_base_url,
         **extra,
     )
     return {

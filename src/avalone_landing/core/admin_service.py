@@ -63,12 +63,21 @@ class AdminService(Service):
     # Users
     # ------------------------------------------------------------------
 
+    def count_users(self) -> int:
+        return self._repo.count_users()
+
+    def count_admins(self) -> int:
+        return self._repo.count_admins()
+
+    def module_counts(self, user_id: int) -> dict[str, int]:
+        return self._repo.module_counts(user_id)
+
     def list_users(self) -> list[AdminUser]:
         rows = self._repo.list_users()
         users: list[AdminUser] = []
         for row in rows:
             user = self._admin_user_from_row(row)
-            user.module_counts = self._repo.module_counts(user.id)
+            user.module_counts = self.module_counts(user.id)
             users.append(user)
         return users
 

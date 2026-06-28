@@ -1,0 +1,20 @@
+<div class="avalone-modal" id="avalone-invite-modal" aria-hidden="true">
+  <div class="avalone-modal__backdrop" onclick="closeInviteModal()"></div>
+  <div class="avalone-modal__panel">
+    <div class="avalone-modal__header">
+      <span class="avalone-modal__title">{{ t('shell_invite_title', lang=widget.lang) }}</span>
+      <button type="button" class="avalone-icon-btn" onclick="closeInviteModal()" aria-label="{{ t('shell_close_menu', lang=widget.lang) }}">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="avalone-modal__body">
+      <div class="avalone-invite__qr" id="avalone-invite-qr">
+        <img src="" alt="{{ t('shell_invite_qr_alt', lang=widget.lang) }}" id="avalone-invite-qr-img" style="display:none;max-width:200px;background:#fff;padding:8px;border-radius:12px">
+      </div>
+      <div class="avalone-invite__actions">
+        <button type="button" class="avalone-btn avalone-btn-primary" onclick="shareInviteLink()">{{ t('shell_invite_share_btn', lang=widget.lang) }}</button>
+        <button type="button" class="avalone-btn avalone-btn-secondary" onclick="copyInviteLink()">{{ t('shell_invite_copy_btn', lang=widget.lang) }}</button>
+      </div>
+    </div>
+  </div>
+</div>

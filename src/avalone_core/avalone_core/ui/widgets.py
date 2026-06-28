@@ -34,6 +34,12 @@ class Widget:
 @dataclass
 class SearchOverlay(Widget):
     template_name: str = "widgets/search_overlay.html"
+    lang: str = "ru"
+
+    def context(self, request: Any = None) -> dict:
+        ctx = super().context(request)
+        ctx["lang"] = self.lang
+        return ctx
 
 
 @dataclass
@@ -41,24 +47,70 @@ class AppSwitcher(Widget):
     template_name: str = "widgets/app_switcher.html"
     current_app: str = "portal"
     branches: List[Any] = field(default_factory=list)
+    lang: str = "ru"
+
+    def context(self, request: Any = None) -> dict:
+        ctx = super().context(request)
+        ctx["lang"] = self.lang
+        return ctx
 
 
 @dataclass
 class ProfileMenu(Widget):
     template_name: str = "widgets/profile_menu.html"
     user: Any = None
+    lang: str = "ru"
+
+    def context(self, request: Any = None) -> dict:
+        ctx = super().context(request)
+        ctx["lang"] = self.lang
+        return ctx
+
+
+@dataclass
+class InviteModal(Widget):
+    template_name: str = "widgets/invite_modal.html"
+    lang: str = "ru"
+
+    def context(self, request: Any = None) -> dict:
+        ctx = super().context(request)
+        ctx["lang"] = self.lang
+        return ctx
+
+
+@dataclass
+class FeedbackModal(Widget):
+    template_name: str = "widgets/feedback_modal.html"
+    lang: str = "ru"
+
+    def context(self, request: Any = None) -> dict:
+        ctx = super().context(request)
+        ctx["lang"] = self.lang
+        return ctx
 
 
 @dataclass
 class BottomNav(Widget):
     template_name: str = "widgets/bottom_nav.html"
     app_nav: List[Any] = field(default_factory=list)
+    lang: str = "ru"
+
+    def context(self, request: Any = None) -> dict:
+        ctx = super().context(request)
+        ctx["lang"] = self.lang
+        return ctx
 
 
 @dataclass
 class NavSidebar(Widget):
     template_name: str = "widgets/nav_sidebar.html"
     app_nav: List[Any] = field(default_factory=list)
+    lang: str = "ru"
+
+    def context(self, request: Any = None) -> dict:
+        ctx = super().context(request)
+        ctx["lang"] = self.lang
+        return ctx
 
 
 @dataclass
@@ -75,6 +127,7 @@ class Shell(Widget):
     breadcrumbs: List[Any] = field(default_factory=list)
     notifications_count: int = 0
     lang: str = "ru"
+    portal_url: str = ""
 
     def __post_init__(self):
         def _branch_id(b):
@@ -91,15 +144,22 @@ class Shell(Widget):
                 "id": "portal",
                 "name": "Avalone",
                 "icon": "A",
-                "url": "https://avalone.online",
+                "url": self.portal_url or "/",
             }
-        self.search_overlay = SearchOverlay()
+        self.search_overlay = SearchOverlay(lang=self.lang)
         self.app_switcher = AppSwitcher(
-            current_app=self.current_app, branches=self.branches
+            current_app=self.current_app, branches=self.branches, lang=self.lang
         )
-        self.profile_menu = ProfileMenu(user=self.user)
-        self.bottom_nav = BottomNav(app_nav=self.app_nav)
-        self.nav_sidebar = NavSidebar(app_nav=self.app_nav)
+        self.profile_menu = ProfileMenu(user=self.user, lang=self.lang)
+        self.invite_modal = InviteModal(lang=self.lang)
+        self.feedback_modal = FeedbackModal(lang=self.lang)
+        self.bottom_nav = BottomNav(app_nav=self.app_nav, lang=self.lang)
+        self.nav_sidebar = NavSidebar(app_nav=self.app_nav, lang=self.lang)
+
+    def render(self, env, request: Any = None) -> Markup:
+        self.invite_modal_html = self.invite_modal.render(env, request)
+        self.feedback_modal_html = self.feedback_modal.render(env, request)
+        return super().render(env, request)
 
     def context(self, request: Any = None) -> dict:
         return {
@@ -119,6 +179,7 @@ class Shell(Widget):
             "bottom_nav": self.bottom_nav,
             "nav_sidebar": self.nav_sidebar,
             "lang": self.lang,
+            "portal_url": self.portal_url,
         }
 
 

@@ -103,9 +103,9 @@ async def admin_dashboard(
     admin: User = Depends(require_permission("users:manage")),
 ):
     ctx = _admin_shell_context(request, {"id": admin.id, "login": admin.login}, active_path="/admin")
-    ctx["user_count"] = admin_service._repo.count_users()
-    ctx["admin_count"] = admin_service._repo.count_admins()
-    module_counts = admin_service._repo.module_counts(admin.id)
+    ctx["user_count"] = admin_service.count_users()
+    ctx["admin_count"] = admin_service.count_admins()
+    module_counts = admin_service.module_counts(admin.id)
     ctx["money_count"] = sum(c for t, c in module_counts.items() if t.startswith("money_"))
     ctx["header"] = PageHeader(title=glossary.t("admin_title")).render(templates.env, request)
     ctx["dashboard_card"] = Card(

@@ -112,10 +112,11 @@ const AVALONE_I18N = window.AVALONE_I18N || {};
   };
 
   // Invite / share Avalone (single entry point in the burger menu)
-  let _inviteUrl = 'https://avalone.online';
+  const BASE_URL = window.AVALONE_BASE_URL || 'https://avalone.online';
+  let _inviteUrl = BASE_URL;
 
   async function loadInviteUrl() {
-    let url = 'https://avalone.online';
+    let url = BASE_URL;
     try {
       const res = await fetch('/api/referral/code', { credentials: 'same-origin' });
       if (res.ok) {
