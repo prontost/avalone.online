@@ -79,6 +79,9 @@ class AuthService(Service):
                 pass
         return 0
 
+    # Alias used by the shared ShellContextBuilder / LanguageService.
+    user_id_of = active_user_id
+
     def session_uids(self, request: Request) -> list[int]:
         """Return signed-in user ids ordered by login time (oldest first)."""
         _, sessions = self._parse(request.cookies.get(self.SESSION_COOKIE))
