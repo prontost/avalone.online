@@ -42,6 +42,9 @@ class FinanceAuthProvider:
                 pass
         return 0
 
+    # Alias used by the shared ShellContextBuilder.
+    active_user_id = user_id_of
+
     def session_uids(self, request: Request) -> list[int]:
         """Return all signed-in Avalone user ids from the multi-session cookie."""
         token = request.cookies.get(self._NEW_COOKIE)

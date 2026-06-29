@@ -60,7 +60,6 @@ def get_shell_context(
     return ShellContext(
         auth_service=auth_service,
         user_service=user_service,
-        language_service=get_language_service(),
         cfg=settings(),
     )
 

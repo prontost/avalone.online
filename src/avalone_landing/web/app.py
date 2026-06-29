@@ -73,20 +73,6 @@ async def current_user_ctx(request: Request, call_next):
     return await call_next(request)
 
 
-def _user_dict(user: User | None) -> dict | None:
-    if user is None:
-        return None
-    return {
-        "id": user.id,
-        "login": user.login,
-        "name": user.name,
-        "email": user.email,
-        "created_at": user.created_at,
-        "is_admin": user.is_admin,
-        "email_verified": user.email_verified,
-    }
-
-
 def _build_id() -> str:
     h = hashlib.md5(usedforsecurity=False)
     for d in (_templates_dir, _static_dir, _ui_templates_dir, _ui_static_dir):
@@ -110,7 +96,6 @@ def _no_cache(resp: Response) -> Response:
 def _render_shell(
     shell_context: ShellContext,
     request: Request,
-    user: User | None,
     current_app: str = "portal",
     app_nav=None,
     **extra,
@@ -118,7 +103,6 @@ def _render_shell(
     return shell_context.build(
         templates,
         request,
-        _user_dict(user),
         current_app=current_app,
         app_nav=app_nav or [],
         build_id=BUILD_ID,
@@ -132,7 +116,7 @@ async def landing(
     user: User | None = Depends(current_user),
     shell_context: ShellContext = Depends(get_shell_context),
 ):
-    ctx = _render_shell(shell_context, request, user, current_app="portal")
+    ctx = _render_shell(shell_context, request, current_app="portal")
     ctx["branch_list"] = AvaloneRegistry.for_shell(ctx.get("lang", "ru"))
     return _no_cache(
         templates.TemplateResponse(

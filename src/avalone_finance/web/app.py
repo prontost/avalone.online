@@ -20,8 +20,9 @@ from fastapi.templating import Jinja2Templates
 from avalone_core import glossary_db as glossary
 from avalone_core.language_service import LanguageService
 from avalone_core.registry import AvaloneRegistry
-from avalone_core.ui import Shell, build_id as ui_build_id
+from avalone_core.ui.shell_context import ShellContextBuilder
 import avalone_core.ui
+from avalone_landing.core.user_service import UserService as PortalUserService
 from avalone_finance.core import db, external_auth, security
 from avalone_finance.core.catalog_service import CatalogService
 from avalone_finance.core.config import settings
@@ -178,39 +179,22 @@ def _no_cache(resp):
     return resp
 
 
-def _shell_context_for(request: Request, user, current_app: str = "money"):
-    lang = LanguageService(auth_service=_auth_provider).detect(request)
-    branches = AvaloneRegistry.for_shell(lang)
-    active_uid = _auth_provider.user_id_of(request)
-    session_uids = _auth_provider.session_uids(request)
-    user_service = TenantService()
-    sessions: list[dict] = []
-    for uid in session_uids:
-        u = user_service.get_user(uid)
-        if u:
-            sessions.append({
-                "id": u["id"],
-                "login": u["login"],
-                "name": u.get("name") or u["login"],
-                "email": u.get("email", ""),
-                "is_admin": False,
-                "active": u["id"] == active_uid,
-            })
-    shell = Shell(current_app=current_app, user=user, sessions=sessions, branches=branches, app_nav=[], lang=lang, portal_url=settings().avalone_base_url)
-    return {
-        "build_id": BUILD_ID,
-        "user": user,
-        "lang": lang,
-        "sessions": sessions,
-        "shell_html": shell.render(templates.env, request),
-    }
+def _shell_context_for(request: Request, current_app: str = "money"):
+    builder = ShellContextBuilder(
+        auth_provider=_auth_provider,
+        user_service=PortalUserService(),
+        templates=templates,
+        portal_url=settings().avalone_base_url,
+        current_app=current_app,
+        build_id=BUILD_ID,
+        app_nav=[],
+    )
+    return builder.build(request)
 
 
 @finance_app.get("/", response_class=HTMLResponse)
 async def app_page(request: Request):
-    user_service = TenantService()
-    user = user_service.get_user(user_service.current()) if user_service.current() else None
-    ctx = _shell_context_for(request, user, current_app="money")
+    ctx = _shell_context_for(request, current_app="money")
     return _no_cache(templates.TemplateResponse(request, "app.html", ctx))
 
 

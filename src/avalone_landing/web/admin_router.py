@@ -53,7 +53,6 @@ _ADMIN_NAV = [
 def _admin_shell_context(
     shell_context: ShellContext,
     request: Request,
-    user: dict | None,
     active_path: str = "/admin",
     **extra: object,
 ) -> dict:
@@ -66,7 +65,6 @@ def _admin_shell_context(
     return shell_context.build(
         templates,
         request,
-        user,
         current_app="portal",
         app_nav=nav,
         build_id=_ui_build_id(),
@@ -101,7 +99,7 @@ async def admin_dashboard(
     admin: User = Depends(require_permission("users:manage")),
     shell_context: ShellContext = Depends(get_shell_context),
 ):
-    ctx = _admin_shell_context(shell_context, request, {"id": admin.id, "login": admin.login}, active_path="/admin")
+    ctx = _admin_shell_context(shell_context, request, active_path="/admin")
     ctx["user_count"] = admin_service.count_users()
     ctx["admin_count"] = admin_service.count_admins()
     module_counts = admin_service.module_counts(admin.id)
@@ -123,7 +121,7 @@ async def admin_users(
     admin: User = Depends(require_permission("users:manage")),
     shell_context: ShellContext = Depends(get_shell_context),
 ):
-    ctx = _admin_shell_context(shell_context, request, {"id": admin.id, "login": admin.login}, active_path="/admin/users")
+    ctx = _admin_shell_context(shell_context, request, active_path="/admin/users")
     users = admin_service.list_users()
     query = q.strip().lower()
     if query:
@@ -147,7 +145,7 @@ async def admin_user_detail(
     admin: User = Depends(require_permission("users:manage")),
     shell_context: ShellContext = Depends(get_shell_context),
 ):
-    ctx = _admin_shell_context(shell_context, request, {"id": admin.id, "login": admin.login}, active_path="/admin/users")
+    ctx = _admin_shell_context(shell_context, request, active_path="/admin/users")
     user = admin_service.get_user(user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -167,7 +165,7 @@ async def admin_settings(
     admin: User = Depends(require_permission("server:settings")),
     shell_context: ShellContext = Depends(get_shell_context),
 ):
-    ctx = _admin_shell_context(shell_context, request, {"id": admin.id, "login": admin.login}, active_path="/admin/settings")
+    ctx = _admin_shell_context(shell_context, request, active_path="/admin/settings")
     ctx["settings"] = admin_service.list_server_settings()
     ctx["header"] = PageHeader(title=glossary.t("admin_settings_title")).render(templates.env, request)
     return templates.TemplateResponse(request, "admin/settings.html", ctx)
@@ -181,7 +179,7 @@ async def admin_feedback(
     shell_context: ShellContext = Depends(get_shell_context),
 ):
     ctx = _admin_shell_context(
-        shell_context, request, {"id": admin.id, "login": admin.login}, active_path="/admin/feedback"
+        shell_context, request, active_path="/admin/feedback"
     )
     ctx["items"] = feedback_service.list_recent(limit=200)
     ctx["now"] = datetime.now(timezone.utc).isoformat(timespec="seconds")

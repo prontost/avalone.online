@@ -43,6 +43,26 @@ class SearchOverlay(Widget):
 
 
 @dataclass
+class AuthModal(Widget):
+    """Modal with login / register / forgot-password / reset-password views."""
+
+    template_name: str = "widgets/auth_modal.html"
+    mode: str = "login"
+    token: str = ""
+    user: Any = None
+    lang: str = "ru"
+
+    def context(self, request: Any = None) -> dict:
+        ctx = super().context(request)
+        ctx["request"] = request
+        ctx["user"] = self.user
+        ctx["mode"] = self.mode
+        ctx["token"] = self.token
+        ctx["lang"] = self.lang
+        return ctx
+
+
+@dataclass
 class AppSwitcher(Widget):
     template_name: str = "widgets/app_switcher.html"
     current_app: str = "portal"

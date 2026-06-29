@@ -48,13 +48,7 @@ def _profile_context(
     user: User,
     **extra: object,
 ) -> dict:
-    u = user_service.get_user(user.id)
-    ctx = _shell_context(
-        request,
-        shell_context,
-        {"id": u.id, "login": u.login, "name": u.name, "email": u.email, "created_at": u.created_at,
-         "is_admin": u.is_admin, "email_verified": u.email_verified} if u else None,
-    )
+    ctx = _shell_context(request, shell_context)
     ctx["screen_time"] = device_service.screen_time_summary(user.id)
     ctx.update(extra)
     return ctx
@@ -65,45 +59,20 @@ def _client_ip(request: Request) -> str:
     return fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "?")
 
 
-def _user_shell_dict(user: User | None) -> dict | None:
-    if user is None:
-        return None
-    return {
-        "id": user.id,
-        "login": user.login,
-        "name": user.name,
-        "email": user.email,
-        "created_at": user.created_at,
-        "is_admin": user.is_admin,
-        "email_verified": user.email_verified,
-    }
-
-
 def _shell_context(
     request: Request,
     shell_context: ShellContext,
-    user: dict | None,
     **extra: object,
 ) -> dict:
     ctx = shell_context.build(
         templates,
         request,
-        user,
         current_app="portal",
         app_nav=[],
         build_id=ui_build_id(),
     )
     for key, value in extra.items():
         ctx.setdefault(key, value)
-    return ctx
-
-
-def _anon_shell_context(
-    request: Request, shell_context: ShellContext, **extra: object
-) -> dict:
-    """Shell context for anonymous portal pages (login/register/reset)."""
-    ctx = _shell_context(request, shell_context, None)
-    ctx.update(extra)
     return ctx
 
 
@@ -118,7 +87,7 @@ async def login_page(
         ctx["already_user"] = {"id": user.id, "login": user.login, "name": user.name, "email": user.email}
     if request.query_params.get("reset") == "ok":
         ctx["success"] = t("reset_password_success")
-    return templates.TemplateResponse(request, "login.html", _shell_context(request, shell_context, _user_shell_dict(user), **ctx))
+    return templates.TemplateResponse(request, "login.html", _shell_context(request, shell_context, **ctx))
 
 
 @router.post("/login")
@@ -146,13 +115,13 @@ async def login(
         return templates.TemplateResponse(
             request,
             "login.html",
-            _shell_context(request, shell_context, _user_shell_dict(active_user), info=t("auth_already_active"), **base_ctx),
+            _shell_context(request, shell_context, info=t("auth_already_active"), **base_ctx),
             status_code=200,
         )
     return templates.TemplateResponse(
         request,
         "login.html",
-        _shell_context(request, shell_context, _user_shell_dict(active_user), error=t(result.error), **base_ctx),
+        _shell_context(request, shell_context, error=t(result.error), **base_ctx),
         status_code=result.error_code,
     )
 
@@ -211,7 +180,7 @@ async def forgot_password_page(
     user: User | None = Depends(current_user),
     shell_context: ShellContext = Depends(get_shell_context),
 ):
-    return templates.TemplateResponse(request, "forgot_password.html", _shell_context(request, shell_context, _user_shell_dict(user)))
+    return templates.TemplateResponse(request, "forgot_password.html", _shell_context(request, shell_context))
 
 
 @router.post("/forgot-password")
@@ -233,7 +202,7 @@ async def forgot_password(
             ctx["reset_url"] = result.reset_url
     else:
         ctx["success"] = t("reset_email_sent_generic")
-    return templates.TemplateResponse(request, "forgot_password.html", _shell_context(request, shell_context, _user_shell_dict(active_user), **ctx))
+    return templates.TemplateResponse(request, "forgot_password.html", _shell_context(request, shell_context, **ctx))
 
 
 @router.get("/reset-password", response_class=HTMLResponse)
@@ -247,9 +216,9 @@ async def reset_password_page(
     result = auth_controller.reset_password(token, "", "")
     if not result.success:
         return templates.TemplateResponse(
-            request, "reset_password.html", _shell_context(request, shell_context, _user_shell_dict(active_user), error=t(result.error)), status_code=400
+            request, "reset_password.html", _shell_context(request, shell_context, error=t(result.error)), status_code=400
         )
-    return templates.TemplateResponse(request, "reset_password.html", _shell_context(request, shell_context, _user_shell_dict(active_user), token=token))
+    return templates.TemplateResponse(request, "reset_password.html", _shell_context(request, shell_context, token=token))
 
 
 @router.post("/reset-password")
@@ -269,7 +238,7 @@ async def reset_password_submit(
         return templates.TemplateResponse(
             request,
             "reset_password.html",
-            _shell_context(request, shell_context, _user_shell_dict(active_user), token=token, error=t(result.error)),
+            _shell_context(request, shell_context, token=token, error=t(result.error)),
             status_code=result.error_code,
         )
 
@@ -287,7 +256,7 @@ async def register_page(
 ):
     prefilled_ref = request.query_params.get("ref", "").strip()
     return templates.TemplateResponse(
-        request, "register.html", _shell_context(request, shell_context, _user_shell_dict(user), prefilled_ref=prefilled_ref)
+        request, "register.html", _shell_context(request, shell_context, prefilled_ref=prefilled_ref)
     )
 
 
@@ -311,7 +280,7 @@ async def register(
         return templates.TemplateResponse(
             request,
             "register.html",
-            _shell_context(request, shell_context, _user_shell_dict(active_user), error=t(result.error)),
+            _shell_context(request, shell_context, error=t(result.error)),
             status_code=result.error_code,
         )
 
