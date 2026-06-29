@@ -679,11 +679,11 @@ body:has(.avalone-shell.has-sidebar) .avalone-main {
 }
 
 .auth-panel {
-  display: none;
+  display: none !important;
 }
 
 .auth-panel.active {
-  display: flex;
+  display: flex !important;
 }
 
 .avalone-link-sm {

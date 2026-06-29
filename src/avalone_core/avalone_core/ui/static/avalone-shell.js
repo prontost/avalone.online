@@ -616,10 +616,26 @@ window.setAvaloneButtonState = function(btn, state, text) {
     tracker.start();
   }
 
+  function initAuthTabs() {
+    const modal = _authModal();
+    if (!modal) return;
+    modal.querySelectorAll('.avalone-auth-tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        const target = tab.getAttribute('data-target');
+        if (target === 'auth-register-panel') {
+          switchAuthView('register');
+        } else if (target === 'auth-login-panel') {
+          switchAuthView('login');
+        }
+      });
+    });
+  }
+
   function init() {
     initTheme();
     initAppSwitcher();
     initProfileMenu();
+    initAuthTabs();
     updateNotificationCount();
     setInterval(updateNotificationCount, 60000);
     if (document.body && document.body.dataset.avaloneAuthenticated === '1') {
