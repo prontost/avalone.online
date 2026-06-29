@@ -129,8 +129,10 @@ a:hover { opacity: 0.85; }
 }
 
 .avalone-header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
   display: flex;
   align-items: center;
@@ -157,8 +159,8 @@ a:hover { opacity: 0.85; }
 }
 
 .avalone-main {
-  padding: 20px;
-  min-height: calc(100vh - var(--header-h));
+  padding: calc(var(--header-h) + 20px) 20px 20px;
+  min-height: 100vh;
   min-width: 0;
   overflow-wrap: break-word;
 }
@@ -170,7 +172,7 @@ body:has(.avalone-shell.has-sidebar) .avalone-main {
 @media (max-width: 768px) {
   :root { --sidebar-w: 0px; }
   .avalone-sidebar { display: none; }
-  .avalone-main { padding: 16px 12px 80px; margin-left: 0 !important; }
+  .avalone-main { padding: calc(var(--header-h) + 16px) 12px 80px; margin-left: 0 !important; }
   .avalone-shell.has-sidebar .avalone-main { padding-bottom: 100px; }
   .avalone-shell.has-sidebar .avalone-main::after {
     content: '';
@@ -183,8 +185,6 @@ body:has(.avalone-shell.has-sidebar) .avalone-main {
     min-height: var(--header-h);
     padding: 8px 12px;
     gap: 8px;
-    position: sticky;
-    top: 0;
   }
   .avalone-logo span { display: none; }
   .avalone-app-switcher__label { display: none; }
