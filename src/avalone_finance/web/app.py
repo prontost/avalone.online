@@ -181,11 +181,27 @@ def _no_cache(resp):
 def _shell_context_for(request: Request, user, current_app: str = "money"):
     lang = LanguageService(auth_service=_auth_provider).detect(request)
     branches = AvaloneRegistry.for_shell(lang)
-    shell = Shell(current_app=current_app, user=user, branches=branches, app_nav=[], lang=lang, portal_url=settings().avalone_base_url)
+    active_uid = _auth_provider.user_id_of(request)
+    session_uids = _auth_provider.session_uids(request)
+    user_service = TenantService()
+    sessions: list[dict] = []
+    for uid in session_uids:
+        u = user_service.get_user(uid)
+        if u:
+            sessions.append({
+                "id": u["id"],
+                "login": u["login"],
+                "name": u.get("name") or u["login"],
+                "email": u.get("email", ""),
+                "is_admin": False,
+                "active": u["id"] == active_uid,
+            })
+    shell = Shell(current_app=current_app, user=user, sessions=sessions, branches=branches, app_nav=[], lang=lang, portal_url=settings().avalone_base_url)
     return {
         "build_id": BUILD_ID,
         "user": user,
         "lang": lang,
+        "sessions": sessions,
         "shell_html": shell.render(templates.env, request),
     }
 

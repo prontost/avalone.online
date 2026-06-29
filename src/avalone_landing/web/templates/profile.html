@@ -74,7 +74,10 @@
 
   <div class="avalone-card">
     <h3 class="mt-0">{{ t('profile_section_session', lang=lang) }}</h3>
-    <a href="/logout" class="avalone-btn avalone-btn-danger">{{ t('profile_btn_logout', lang=lang) }}</a>
+    <div class="avalone-stack">
+      <button type="button" class="avalone-btn avalone-btn-secondary" onclick="openAuthModal('login')">{{ t('shell_login_other', lang=lang) }}</button>
+      <a href="/logout" class="avalone-btn avalone-btn-danger">{{ t('profile_btn_logout', lang=lang) }}</a>
+    </div>
   </div>
 </div>
 

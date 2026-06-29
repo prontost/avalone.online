@@ -90,14 +90,23 @@ class AuthService(Service):
             return None
         return ".avalone.online"
 
+    def _use_secure_cookie(self, request: Request) -> bool:
+        # Only mark the cookie Secure when the request itself arrived over HTTPS.
+        # This keeps localhost/HTTP development working and lets TestClient see
+        # the cookie without having to fake TLS.
+        return request.url.scheme == "https"
+
     def _set_cookie(self, request: Request, response: Response, active: int, sessions: list[dict[str, Any]]) -> None:
         value = {"active": active, "sessions": sessions}
+        # SameSite=None is only needed for true cross-site flows. Lax is safer
+        # for same-site navigation and avoids Safari/third-party cookie blocks.
+        secure = self._use_secure_cookie(request)
         response.set_cookie(
             self.SESSION_COOKIE,
             self._signer.dumps(value),
             httponly=True,
-            secure=True,
-            samesite="none",
+            secure=secure,
+            samesite="lax",
             domain=self.cookie_domain(request),
             max_age=60 * 60 * 24 * self.SESSION_MAX_AGE_DAYS,
         )
@@ -107,8 +116,8 @@ class AuthService(Service):
                 self.LEGACY_COOKIE,
                 domain=self.cookie_domain(request),
                 path="/",
-                samesite="none",
-                secure=True,
+                samesite="lax",
+                secure=secure,
                 httponly=True,
             )
 

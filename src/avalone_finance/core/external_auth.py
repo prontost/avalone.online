@@ -42,6 +42,24 @@ class FinanceAuthProvider:
                 pass
         return 0
 
+    def session_uids(self, request: Request) -> list[int]:
+        """Return all signed-in Avalone user ids from the multi-session cookie."""
+        token = request.cookies.get(self._NEW_COOKIE)
+        if not token:
+            return []
+        try:
+            data = self._signer.loads(token)
+        except Exception:
+            return []
+        if not isinstance(data, dict):
+            return []
+        sessions = data.get("sessions") or []
+        return [
+            int(s["uid"])
+            for s in sessions
+            if isinstance(s, dict) and s.get("uid")
+        ]
+
     @staticmethod
     def _active_uid_from_data(data) -> int:
         if isinstance(data, int):
