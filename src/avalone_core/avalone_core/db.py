@@ -195,6 +195,30 @@ CREATE TABLE IF NOT EXISTS money_slept_entries (
     PRIMARY KEY (tenant, name)
 );
 
+-- Work module: job postings aggregated from external Korean job boards.
+CREATE TABLE IF NOT EXISTS work_job_posts (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    external_guid        TEXT UNIQUE NOT NULL,
+    source_site          TEXT NOT NULL DEFAULT '',
+    source_url           TEXT NOT NULL,
+    title                TEXT NOT NULL,
+    title_translated     TEXT,
+    description_html     TEXT,
+    description_text     TEXT,
+    description_translated TEXT,
+    employer             TEXT,
+    contact_phone        TEXT,
+    contact_email        TEXT,
+    visa_type            TEXT,
+    location             TEXT,
+    job_type             TEXT,
+    posted_at            TEXT,
+    parsed_at            TEXT NOT NULL,
+    raw_json             TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_work_job_posts_posted_at ON work_job_posts(posted_at);
+CREATE INDEX IF NOT EXISTS idx_work_job_posts_source_site ON work_job_posts(source_site);
+
 -- Work module has been removed; legacy work_* tables are dropped on migration.
 
 -- Unified glossary is owned by GlossaryRepository (avalone_core.glossary_service).
@@ -325,6 +349,29 @@ def _apply_migrations() -> None:
                 created_at        TEXT NOT NULL,
                 UNIQUE(invitee_id)
             );
+
+            CREATE TABLE IF NOT EXISTS work_job_posts (
+                id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+                external_guid        TEXT UNIQUE NOT NULL,
+                source_site          TEXT NOT NULL DEFAULT '',
+                source_url           TEXT NOT NULL,
+                title                TEXT NOT NULL,
+                title_translated     TEXT,
+                description_html     TEXT,
+                description_text     TEXT,
+                description_translated TEXT,
+                employer             TEXT,
+                contact_phone        TEXT,
+                contact_email        TEXT,
+                visa_type            TEXT,
+                location             TEXT,
+                job_type             TEXT,
+                posted_at            TEXT,
+                parsed_at            TEXT NOT NULL,
+                raw_json             TEXT
+            );
+            CREATE INDEX IF NOT EXISTS idx_work_job_posts_posted_at ON work_job_posts(posted_at);
+            CREATE INDEX IF NOT EXISTS idx_work_job_posts_source_site ON work_job_posts(source_site);
             """
         )
         con.commit()

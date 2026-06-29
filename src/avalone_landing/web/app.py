@@ -23,6 +23,7 @@ from avalone_landing.web.api.misc import router as misc_api_router
 from avalone_landing.web.auth import router as auth_router
 from avalone_landing.web.dependencies import current_user, get_shell_context
 from avalone_landing.web.shell_context import ShellContext
+from avalone_landing.web.work_router import router as work_router
 from avalone_finance.web.app import finance_app
 
 t = glossary.t
@@ -50,6 +51,7 @@ app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(admin_api_router)
 app.include_router(misc_api_router)
+app.include_router(work_router)
 app.mount("/finance", finance_app)
 BASE = Path(__file__).parent
 _templates_dir = BASE / "templates"

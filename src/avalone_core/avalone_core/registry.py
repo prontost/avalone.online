@@ -34,6 +34,15 @@ class AvaloneRegistry:
             module="money",
         ),
         AppBranch(
+            id="work",
+            name_key="app_work",
+            icon="💼",
+            description_key="app_work_desc",
+            status="active",
+            url="/work",
+            module="work",
+        ),
+        AppBranch(
             id="education",
             name_key="app_education",
             icon="📚",

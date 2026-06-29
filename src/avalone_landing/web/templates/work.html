@@ -1,0 +1,80 @@
+{% extends "avalone_base.html" %}
+
+{% block title %}{{ t('work_page_title', lang=lang) }} — {{ t('brand', lang=lang) }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/work.css?v={{ build_id }}">
+{% endblock %}
+
+{% block content %}
+<div class="avalone-work">
+  <div class="work-header">
+    <h1>{{ t('work_page_title', lang=lang) }}</h1>
+    <form action="/work/fetch" method="post" class="work-fetch-form">
+      <button type="submit" class="avalone-btn avalone-btn-primary">{{ t('work_refresh', lang=lang) }}</button>
+    </form>
+  </div>
+
+  {% if jobs %}
+  <div class="job-list">
+    {% for job in jobs %}
+    <article class="job-card">
+      <div class="job-card__meta">
+        {% if job.posted_at %}
+        <time class="job-card__date" datetime="{{ job.posted_at.isoformat() }}">
+          {{ job.posted_at.strftime('%Y-%m-%d') }}
+        </time>
+        {% endif %}
+        <span class="job-card__source">{{ t('work_source_label', lang=lang) }}: {{ job.source_site }}</span>
+      </div>
+
+      <h2 class="job-card__title">
+        {{ job.title_translated or job.title }}
+      </h2>
+
+      {% if job.location or job.visa_type or job.job_type %}
+      <div class="job-card__tags">
+        {% if job.location %}<span class="job-tag job-tag--location">{{ job.location }}</span>{% endif %}
+        {% if job.visa_type %}<span class="job-tag job-tag--visa">{{ t('work_visa_type', lang=lang) }}: {{ job.visa_type }}</span>{% endif %}
+        {% if job.job_type %}<span class="job-tag job-tag--type">{{ job.job_type }}</span>{% endif %}
+      </div>
+      {% endif %}
+
+      <div class="job-card__body">
+        {{ (job.description_translated or job.description_text or job.description_html)|safe }}
+      </div>
+
+      <div class="job-card__contacts">
+        {% if job.employer %}
+        <div class="job-contact">
+          <span class="job-contact__label">{{ t('work_employer', lang=lang) }}:</span>
+          <span class="job-contact__value">{{ job.employer }}</span>
+        </div>
+        {% endif %}
+        {% if job.contact_phone %}
+        <div class="job-contact">
+          <span class="job-contact__label">{{ t('work_contact_phone', lang=lang) }}:</span>
+          <a class="job-contact__value" href="tel:{{ job.contact_phone }}">{{ job.contact_phone }}</a>
+        </div>
+        {% endif %}
+        {% if job.contact_email %}
+        <div class="job-contact">
+          <span class="job-contact__label">{{ t('work_contact_email', lang=lang) }}:</span>
+          <a class="job-contact__value" href="mailto:{{ job.contact_email }}">{{ job.contact_email }}</a>
+        </div>
+        {% endif %}
+      </div>
+
+      <a class="job-card__link" href="{{ job.source_url }}" target="_blank" rel="noopener">
+        {{ t('work_original_link', lang=lang) }}
+      </a>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="avalone-card work-empty">
+    <p>{{ t('work_no_jobs', lang=lang) }}</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -380,6 +380,23 @@ _PORTAL_SEED_EXTRA: list[dict[str, Any]] = [
     {"key": "landing_sign_up_text",          "ru": "Присоединяйтесь к Avalone — все инструменты под рукой.", "en": "Join Avalone — all your tools in one place.", "ko": "Avalone에 가입하세요 — 모든 도구가 한 곳에 있습니다.", "kind": "ui", "module": "portal"},
     {"key": "landing_btn_register",          "ru": "Зарегистрироваться",                                  "en": "Sign up",                                    "ko": "회원가입", "kind": "ui", "module": "portal"},
     {"key": "landing_btn_login",             "ru": "Войти",                                               "en": "Sign in",                                  "ko": "로그인", "kind": "ui", "module": "portal"},
+
+    # Work module
+    {"key": "app_work",                      "ru": "Работа",                                              "en": "Work",                                       "ko": "일자리", "kind": "ui", "module": "portal"},
+    {"key": "app_work_desc",                 "ru": "Вакансии и подработки в Южной Корее.",                "en": "Jobs and part-time work in South Korea.",    "ko": "대한민국의 구인 및 아를바이트.", "kind": "ui", "module": "portal"},
+    {"key": "work_page_title",               "ru": "Вакансии",                                            "en": "Job postings",                               "ko": "채용 공고", "kind": "ui", "module": "portal"},
+    {"key": "work_no_jobs",                  "ru": "Пока нет объявлений. Нажмите «Обновить», чтобы загрузить.", "en": "No postings yet. Tap Refresh to load.",      "ko": "공고가 없습니다. 새로고침을 눌러주세요.", "kind": "ui", "module": "portal"},
+    {"key": "work_refresh",                  "ru": "Обновить",                                            "en": "Refresh",                                    "ko": "새로고침", "kind": "ui", "module": "portal"},
+    {"key": "work_refreshing",               "ru": "Загрузка...",                                         "en": "Loading...",                                 "ko": "로딩 중...", "kind": "ui", "module": "portal"},
+    {"key": "work_source_label",             "ru": "Источник",                                            "en": "Source",                                     "ko": "출처", "kind": "ui", "module": "portal"},
+    {"key": "work_posted_at",                "ru": "Опубликовано",                                        "en": "Posted",                                     "ko": "게시일", "kind": "ui", "module": "portal"},
+    {"key": "work_employer",                 "ru": "Работодатель",                                        "en": "Employer",                                   "ko": "고용주", "kind": "ui", "module": "portal"},
+    {"key": "work_contact_phone",            "ru": "Телефон",                                             "en": "Phone",                                      "ko": "전화", "kind": "ui", "module": "portal"},
+    {"key": "work_contact_email",            "ru": "Email",                                               "en": "Email",                                      "ko": "이메일", "kind": "ui", "module": "portal"},
+    {"key": "work_visa_type",                "ru": "Виза",                                                "en": "Visa",                                       "ko": "비자", "kind": "ui", "module": "portal"},
+    {"key": "work_location",                 "ru": "Локация",                                             "en": "Location",                                   "ko": "지역", "kind": "ui", "module": "portal"},
+    {"key": "work_job_type",                 "ru": "Тип работы",                                          "en": "Job type",                                   "ko": "직종", "kind": "ui", "module": "portal"},
+    {"key": "work_original_link",            "ru": "Открыть оригинал",                                    "en": "Open original",                              "ko": "원문 보기", "kind": "ui", "module": "portal"},
 ]
 
 

@@ -6,6 +6,7 @@
 
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,6 +29,11 @@ class Settings(BaseSettings):
 
     # Comma-separated list of admin addresses to notify about new feedback.
     admin_email: str = ""
+
+    # LLM provider for optional features such as job-post translation.
+    openrouter_api_key: str = Field(default="", alias="OPENROUTER_API_KEY")
+    openrouter_model: str = "openai/gpt-4o-mini"
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
 
 @lru_cache
