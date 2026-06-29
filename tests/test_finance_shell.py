@@ -56,11 +56,15 @@ def test_finance_page_shows_profile_switcher_when_multiple_sessions(client):
     uid_alpha = user_service._repo.get_by_login_or_email("shell_alpha").id
     uid_beta = user_service._repo.get_by_login_or_email("shell_beta").id
 
+    # Names are edited in the portal profile; finance must read the same name.
+    user_service.update_name(uid_alpha, "Alpha Name")
+    user_service.update_name(uid_beta, "Beta Name")
+
     cookie = _issue_two_session_cookie((uid_alpha, uid_beta))
     client.cookies.set("avalone_sessions", cookie, domain="avalone.online", path="/")
 
     resp = client.get("/finance", follow_redirects=True)
     assert resp.status_code == 200
     assert "avalone-profile-switcher" in resp.text
-    assert "shell_alpha" in resp.text
-    assert "shell_beta" in resp.text
+    assert "Alpha Name" in resp.text
+    assert "Beta Name" in resp.text

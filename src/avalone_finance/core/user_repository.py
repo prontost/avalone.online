@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS users (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     login          TEXT UNIQUE NOT NULL,
     pwhash         TEXT NOT NULL,
+    name           TEXT DEFAULT '',
     email          TEXT DEFAULT '',
     email_verified INTEGER DEFAULT 0,
     verify_code    TEXT DEFAULT '',
@@ -56,6 +57,7 @@ class UserRepository(Repository):
         except sqlite3.OperationalError:
             return
         additions = {
+            "name": "TEXT DEFAULT ''",
             "email_verified": "INTEGER DEFAULT 0",
             "verify_code": "TEXT DEFAULT ''",
             "verify_sent": "TEXT DEFAULT ''",
@@ -111,33 +113,33 @@ class UserRepository(Repository):
     def get_by_login(self, login: str) -> dict | None:
         with self._conn() as con:
             r = con.execute(
-                "SELECT id, login, pwhash, email FROM users WHERE login=?",
+                "SELECT id, login, pwhash, email, name FROM users WHERE login=?",
                 (login.strip().lower(),),
             ).fetchone()
         if not r:
             return None
-        return {"id": r[0], "login": r[1], "pwhash": r[2], "email": r[3]}
+        return {"id": r[0], "login": r[1], "pwhash": r[2], "email": r[3], "name": r[4] or ""}
 
     def get_user(self, tenant_id: int) -> dict | None:
         with self._conn() as con:
             r = con.execute(
-                "SELECT id, login, email, email_verified, created_at FROM users WHERE id=?",
+                "SELECT id, login, email, email_verified, created_at, name FROM users WHERE id=?",
                 (tenant_id,),
             ).fetchone()
         if not r:
             return None
-        return {"id": r[0], "login": r[1], "email": r[2], "email_verified": r[3], "created_at": r[4]}
+        return {"id": r[0], "login": r[1], "email": r[2], "email_verified": r[3], "created_at": r[4], "name": r[5] or ""}
 
     def get_user_by_login(self, login: str) -> dict | None:
         login = login.strip().lower()
         with self._conn() as con:
             r = con.execute(
-                "SELECT id, login, email, created_at FROM users WHERE login=?",
+                "SELECT id, login, email, created_at, name FROM users WHERE login=?",
                 (login,),
             ).fetchone()
         if not r:
             return None
-        return {"id": r[0], "login": r[1], "email": r[2], "created_at": r[3]}
+        return {"id": r[0], "login": r[1], "email": r[2], "created_at": r[3], "name": r[4] or ""}
 
     def login_taken(self, login: str) -> bool:
         return self.get_by_login(login) is not None
@@ -154,12 +156,12 @@ class UserRepository(Repository):
         """All users with their per-tenant entry counts (admin aggregate)."""
         with self._conn() as con:
             rows = con.execute(
-                "SELECT u.id, u.login, u.email, u.created_at, "
+                "SELECT u.id, u.login, u.email, u.created_at, u.name, "
                 "(SELECT COUNT(*) FROM money_led_entries e WHERE e.tenant=u.id) AS entries "
                 "FROM users u ORDER BY u.id"
             ).fetchall()
         return [
-            {"id": r[0], "login": r[1], "email": r[2], "created_at": r[3], "entries": r[4]}
+            {"id": r[0], "login": r[1], "email": r[2], "created_at": r[3], "name": r[4] or "", "entries": r[5]}
             for r in rows
         ]
 
@@ -175,10 +177,10 @@ class UserRepository(Repository):
             return []
         with self._conn() as con:
             rows = con.execute(
-                "SELECT id, login, email FROM users WHERE email=? ORDER BY id",
+                "SELECT id, login, email, name FROM users WHERE email=? ORDER BY id",
                 (email,),
             ).fetchall()
-        return [{"id": r[0], "login": r[1], "email": r[2]} for r in rows]
+        return [{"id": r[0], "login": r[1], "email": r[2], "name": r[3] or ""} for r in rows]
 
     def change_password(self, tenant_id: int, old_pw: str, new_pw: str) -> bool:
         with self._conn() as con:
