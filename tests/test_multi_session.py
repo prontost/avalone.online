@@ -84,3 +84,27 @@ def test_login_keeps_previous_session(client, auth):
     assert active in uids
     assert len(sessions) == 2
     assert len(uids) == 2
+
+
+def test_switch_user_redirects_back_to_referer(client, auth):
+    """Switching active session must keep the user on the current page."""
+    r1 = client.post("/api/auth/register", json={
+        "login": "first_user",
+        "password": "Pass1234!",
+        "password2": "Pass1234!",
+    })
+    cookie1 = _session_cookie_from(r1)
+
+    r2 = client.post("/api/auth/register", json={
+        "login": "second_user",
+        "password": "Pass1234!",
+        "password2": "Pass1234!",
+    })
+    cookie2 = _session_cookie_from(r2)
+
+    # Cookie now contains both sessions, active is second_user.
+    client.headers["Cookie"] = f"avalone_sessions={cookie2}"
+    client.headers["Referer"] = "https://avalone.online/finance"
+    r = client.post("/switch-user", data={"user_id": "1"}, follow_redirects=False)
+    assert r.status_code == 303
+    assert r.headers["location"] == "https://avalone.online/finance"

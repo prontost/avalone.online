@@ -330,7 +330,8 @@ async def switch_user(
         target_id = 0
     if not target_id:
         return RedirectResponse("/", status_code=303)
-    resp = RedirectResponse("/", status_code=303)
+    next_url = request.headers.get("referer") or "/"
+    resp = RedirectResponse(next_url, status_code=303)
     auth_service.switch_active(request, resp, target_id)
     return resp
 
