@@ -31,7 +31,7 @@ async def me(user_service: TenantService = Depends(get_user_service)):
     u = user_service.get_user(tid)
     if not u:
         return JSONResponse({"error": "not_found"}, status_code=404)
-    return {"login": u["login"], "email": u["email"],
+    return {"login": u["login"], "name": u.get("name", ""), "email": u["email"],
             "email_verified": u["email_verified"], "is_admin": user_service.is_admin(tid)}
 
 @router.post("/send-verify-code")

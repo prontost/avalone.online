@@ -68,3 +68,22 @@ def test_finance_page_shows_profile_switcher_when_multiple_sessions(client):
     assert "avalone-profile-switcher" in resp.text
     assert "Alpha Name" in resp.text
     assert "Beta Name" in resp.text
+
+
+def test_finance_me_api_returns_name(client):
+    """Finance /me and /account/me endpoints must expose the user's name."""
+    user_service = UserService()
+    user_service.create_user("named_user", "Pass1234!")
+    uid = user_service._repo.get_by_login_or_email("named_user").id
+    user_service.update_name(uid, "Displayed Name")
+
+    cookie = _issue_two_session_cookie((uid, uid))
+    client.cookies.set("avalone_sessions", cookie, domain="avalone.online", path="/")
+
+    me = client.get("/finance/api/me").json()
+    assert me["login"] == "named_user"
+    assert me["name"] == "Displayed Name"
+
+    account = client.get("/finance/api/account/me").json()
+    assert account["login"] == "named_user"
+    assert account["name"] == "Displayed Name"

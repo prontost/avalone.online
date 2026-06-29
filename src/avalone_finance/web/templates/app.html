@@ -1001,7 +1001,8 @@ async function loadAccountSection(){
   const me = await (await fetch('/finance/api/account/me')).json();
   if(!me || !me.login) return;
   const vmark = me.email ? (me.email_verified ? ' ✓' : ' ' + T('acc_email_unverified_mark')) : '';
-  $('acc-who').textContent = `${me.login}${me.email ? ' · '+me.email+vmark : ''}`;
+  const displayName = me.name || me.login;
+  $('acc-who').textContent = `${displayName}${me.email ? ' · '+me.email+vmark : ''}`;
   if(me.email) $('acc-email').value = me.email;
   const vrow = $('acc-verify-row');
   if(vrow) vrow.style.display = (me.email && !me.email_verified) ? '' : 'none';
