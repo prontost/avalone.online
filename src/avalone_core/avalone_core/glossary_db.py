@@ -399,7 +399,7 @@ _PORTAL_SEED_EXTRA: list[dict[str, Any]] = [
     {"key": "work_original_link",            "ru": "Открыть оригинал",                                    "en": "Open original",                              "ko": "원문 보기", "kind": "ui", "module": "portal"},
     {"key": "work_disclaimer",               "ru": "Объявления собраны из открытых источников с целью перевода и помощи неносителям корейского/английского языка. Права на оригинальные тексты принадлежат их авторам.", "en": "Postings are collected from public sources for translation and to help non-Korean/English speakers. Original texts belong to their respective authors.", "ko": "공개된 출처에서 수집된 공고는 번역 및 한국어/영어 비원어민 지원을 위해 제공됩니다. 원문의 권리는 해당 저작자에게 있습니다.", "kind": "ui", "module": "portal"},
     {"key": "work_filter_location",          "ru": "Локация",                                             "en": "Location",                                   "ko": "지역", "kind": "ui", "module": "portal"},
-    {"key": "work_location_lang",            "ru": "Язык локаций",                                        "en": "Location language",                          "ko": "지역 언어", "kind": "ui", "module": "portal"},
+    {"key": "work_location_lang",            "ru": "Язык значений",                                       "en": "Value language",                             "ko": "값 언어", "kind": "ui", "module": "portal"},
     {"key": "work_filter_source",            "ru": "Источник",                                            "en": "Source",                                     "ko": "출처", "kind": "ui", "module": "portal"},
     {"key": "work_filter_period",            "ru": "Период",                                              "en": "Period",                                     "ko": "기간", "kind": "ui", "module": "portal"},
     {"key": "work_filter_all",               "ru": "Все",                                                 "en": "All",                                        "ko": "전체", "kind": "ui", "module": "portal"},
@@ -441,10 +441,16 @@ _PORTAL_SEED_EXTRA: list[dict[str, Any]] = [
     {"key": "work_jobtype_daily_pay",        "ru": "Ежедневная оплата",                                   "en": "Daily pay",                                  "ko": "일당 지급", "kind": "ui", "module": "portal"},
     {"key": "work_jobtype_fulltime_monthly", "ru": "Полная занятость / помесячно",                        "en": "Full-time / monthly",                        "ko": "정규직 / 월급", "kind": "ui", "module": "portal"},
     {"key": "work_jobtype_fulltime_yearly",  "ru": "Полная занятость / погодово",                         "en": "Full-time / yearly",                         "ko": "정규직 / 연봉", "kind": "ui", "module": "portal"},
-    {"key": "work_jobtype_permanent_after_contract", "ru": "Контракт с переходом на постоянную",            "en": "Contract-to-hire",                           "ko": "계약직 후 정규직전환", "kind": "ui", "module": "portal"},
-    {"key": "work_jobtype_permanent",        "ru": "Постоянная работа",                                   "en": "Permanent",                                  "ko": "상용직", "kind": "ui", "module": "portal"},
-    {"key": "work_jobtype_commissioned",     "ru": "По договору поручения",                               "en": "Commissioned",                               "ko": "위촉직", "kind": "ui", "module": "portal"},
-    {"key": "work_jobtype_temporary",        "ru": "Временная работа",                                    "en": "Temporary",                                  "ko": "임시직", "kind": "ui", "module": "portal"},
+    {"key": "work_jobtype_계약직_후_정규직전환", "ru": "Контракт с переходом на постоянную",                  "en": "Contract-to-hire",                           "ko": "계약직 후 정규직전환", "kind": "ui", "module": "portal"},
+    {"key": "work_jobtype_상용직",           "ru": "Постоянная работа",                                   "en": "Permanent",                                  "ko": "상용직", "kind": "ui", "module": "portal"},
+    {"key": "work_jobtype_위촉직",           "ru": "По договору поручения",                               "en": "Commissioned",                               "ko": "위촉직", "kind": "ui", "module": "portal"},
+    {"key": "work_jobtype_임시직",           "ru": "Временная работа",                                    "en": "Temporary",                                  "ko": "임시직", "kind": "ui", "module": "portal"},
+    {"key": "work_jobtype_parttime_hourly",  "ru": "Частичная занятость / почасовая",                     "en": "Part-time / hourly",                         "ko": "파트타임 / 시급", "kind": "ui", "module": "portal"},
+    {"key": "work_visa_e2",                  "ru": "E-2",                                                 "en": "E-2",                                        "ko": "E-2", "kind": "ui", "module": "portal"},
+    {"key": "work_visa_f2",                  "ru": "F-2",                                                 "en": "F-2",                                        "ko": "F-2", "kind": "ui", "module": "portal"},
+    {"key": "work_visa_f4",                  "ru": "F-4",                                                 "en": "F-4",                                        "ko": "F-4", "kind": "ui", "module": "portal"},
+    {"key": "work_visa_f5",                  "ru": "F-5",                                                 "en": "F-5",                                        "ko": "F-5", "kind": "ui", "module": "portal"},
+    {"key": "work_visa_f6",                  "ru": "F-6",                                                 "en": "F-6",                                        "ko": "F-6", "kind": "ui", "module": "portal"},
 ]
 
 
@@ -502,10 +508,28 @@ def td(value: str, prefix: str, lang: str = "ru") -> str:
     if not value:
         return value
     raw = str(value).strip()
-    safe = raw.lower().replace(" ", "_").replace("/", "_").replace("-", "_").replace(".", "_")
+    safe = raw.lower().replace("-", "")
+    for ch in " /.()[],:\"":
+        safe = safe.replace(ch, "_")
+    while "__" in safe:
+        safe = safe.replace("__", "_")
+    safe = safe.strip("_")
     key = f"{prefix}_{safe}"
     translated = _get_repo().get(key, lang)
     return translated if translated != key else raw
+
+
+def td_list(value: str, prefix: str, lang: str = "ru", sep: str = ",") -> str:
+    """Translate a comma-separated list of dynamic values.
+
+    Each item is trimmed and translated via :func:`td`; unknown items are kept
+    as-is.  Useful for visa type combinations like ``"F-2, F-4, F-5"``.
+    """
+    if not value:
+        return value
+    parts = [part.strip() for part in str(value).split(sep)]
+    translated = [td(part, prefix, lang) for part in parts if part]
+    return ", ".join(translated)
 
 
 def all_by_lang(kind: str | None = None, module: str | None = None) -> dict[str, dict[str, str]]:

@@ -60,7 +60,7 @@
       <select id="filter-source" name="source">
         <option value="" {% if not selected_source %}selected{% endif %}>{{ t('work_filter_all', lang=lang) }}</option>
         {% for src in sources %}
-        <option value="{{ src }}" {% if selected_source == src %}selected{% endif %}>{{ td(src, 'work_site', lang=lang) }}</option>
+        <option value="{{ src }}" {% if selected_source == src %}selected{% endif %}>{{ td(src, 'work_site', lang=selected_loc_lang) }}</option>
         {% endfor %}
       </select>
     </div>
@@ -70,7 +70,7 @@
       <select id="filter-visa" name="visa">
         <option value="" {% if not selected_visa %}selected{% endif %}>{{ t('work_filter_all', lang=lang) }}</option>
         {% for v in visa_types %}
-        <option value="{{ v }}" {% if selected_visa == v %}selected{% endif %}>{{ v }}</option>
+        <option value="{{ v }}" {% if selected_visa == v %}selected{% endif %}>{{ td_list(v, 'work_visa', lang=selected_loc_lang) }}</option>
         {% endfor %}
       </select>
     </div>
@@ -80,7 +80,7 @@
       <select id="filter-job-type" name="job_type">
         <option value="" {% if not selected_job_type %}selected{% endif %}>{{ t('work_filter_all', lang=lang) }}</option>
         {% for jt in job_types %}
-        <option value="{{ jt }}" {% if selected_job_type == jt %}selected{% endif %}>{{ td(jt, 'work_jobtype', lang=lang) }}</option>
+        <option value="{{ jt }}" {% if selected_job_type == jt %}selected{% endif %}>{{ td(jt, 'work_jobtype', lang=selected_loc_lang) }}</option>
         {% endfor %}
       </select>
     </div>
@@ -90,7 +90,7 @@
       <select id="filter-country" name="country">
         <option value="" {% if not selected_country %}selected{% endif %}>{{ t('work_filter_all', lang=lang) }}</option>
         {% for c in countries %}
-        <option value="{{ c }}" {% if selected_country == c %}selected{% endif %}>{{ td(c, 'work_country', lang=lang) }}</option>
+        <option value="{{ c }}" {% if selected_country == c %}selected{% endif %}>{{ td(c, 'work_country', lang=selected_loc_lang) }}</option>
         {% endfor %}
       </select>
     </div>
@@ -134,7 +134,7 @@
           {{ job.posted_at.strftime('%Y-%m-%d') }} ({{ relative_date(job.posted_at, lang) }})
         </time>
         {% endif %}
-        <span class="job-card__source">{{ t('work_source_label', lang=lang) }}: {{ job.source_site }}</span>
+        <span class="job-card__source">{{ t('work_source_label', lang=lang) }}: {{ td(job.source_site, 'work_site', lang=selected_loc_lang) }}</span>
         {% if job.posted_at and (now() - job.posted_at).days <= 1 %}
         <span class="job-badge job-badge--new">{{ t('work_new_badge', lang=lang) }}</span>
         {% endif %}
@@ -149,9 +149,9 @@
 
       {% if job.location or job.visa_type or job.job_type or job.pay_type or job.salary %}
       <div class="job-card__tags">
-        {% if job.location %}<span class="job-tag job-tag--location">{{ job.location }}</span>{% endif %}
-        {% if job.visa_type %}<span class="job-tag job-tag--visa">{{ t('work_visa_type', lang=lang) }}: {{ job.visa_type }}</span>{% endif %}
-        {% if job.job_type %}<span class="job-tag job-tag--type">{{ job.job_type }}</span>{% endif %}
+        {% if job.location %}<span class="job-tag job-tag--location">{{ display_location(job.location) }}</span>{% endif %}
+        {% if job.visa_type %}<span class="job-tag job-tag--visa">{{ t('work_visa_type', lang=lang) }}: {{ td_list(job.visa_type, 'work_visa', lang=selected_loc_lang) }}</span>{% endif %}
+        {% if job.job_type %}<span class="job-tag job-tag--type">{{ td(job.job_type, 'work_jobtype', lang=selected_loc_lang) }}</span>{% endif %}
         {% if job.pay_type or job.salary %}
         <span class="job-tag job-tag--salary">
           {% if job.pay_type %}{{ job.pay_type }}{% endif %}

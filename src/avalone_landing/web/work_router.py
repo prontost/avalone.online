@@ -85,6 +85,12 @@ async def work_index(
     def _display_location(raw: str) -> str:
         return loc_repo.get(raw, loc_lang) or raw
 
+    def _display_location_list(raw: str | None, sep: str = ",") -> str:
+        if not raw:
+            return raw or ""
+        parts = [part.strip() for part in str(raw).split(sep) if part.strip()]
+        return ", ".join(_display_location(part) for part in parts)
+
     ctx.update(
         {
             "jobs": jobs,
@@ -105,6 +111,7 @@ async def work_index(
             "selected_job_type": job_type,
             "selected_country": country,
             "selected_loc_lang": loc_lang,
+            "display_location": _display_location_list,
             "current_page": current_page,
             "total_pages": total_pages,
             "total_jobs": total,

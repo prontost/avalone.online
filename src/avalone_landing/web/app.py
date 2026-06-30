@@ -63,6 +63,7 @@ _ui_static_dir = _ui_dir / "static"
 templates = Jinja2Templates(directory=[str(_templates_dir), str(_ui_templates_dir)])
 templates.env.globals["t"] = glossary.t
 templates.env.globals["td"] = glossary.td
+templates.env.globals["td_list"] = glossary.td_list
 templates.env.globals["i18n_js"] = glossary.i18n_js
 templates.env.globals["registry"] = AvaloneRegistry
 templates.env.globals["now"] = lambda: datetime.now(timezone.utc)
