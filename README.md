@@ -20,6 +20,7 @@
 - [`docs/portal-navigation.md`](docs/portal-navigation.md) — концепция навигации по порталу метавселенной.
 - [`docs/tech-stack.md`](docs/tech-stack.md) — предварительный технологический стек.
 - [`docs/identity-architecture.md`](docs/identity-architecture.md) — единая авторизация Avalone для всех веток.
+- [`docs/runtime.md`](docs/runtime.md) — запущенные сервисы, зависимости, пути данных и инструкция по переносу на VPS.
 
 ## Текущее состояние
 

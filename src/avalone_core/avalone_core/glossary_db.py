@@ -419,6 +419,8 @@ _PORTAL_SEED_EXTRA: list[dict[str, Any]] = [
     {"key": "work_new_badge",                "ru": "Новое",                                               "en": "New",                                        "ko": "신규", "kind": "ui", "module": "portal"},
     {"key": "work_total_jobs",               "ru": "Всего вакансий",                                      "en": "Total jobs",                                 "ko": "총 채용 공고", "kind": "ui", "module": "portal"},
     {"key": "work_page_of",                  "ru": "из",                                                  "en": "of",                                         "ko": "중", "kind": "ui", "module": "portal"},
+    {"key": "work_prev",                     "ru": "Назад",                                               "en": "Previous",                                   "ko": "이전", "kind": "ui", "module": "portal"},
+    {"key": "work_next",                     "ru": "Вперёд",                                              "en": "Next",                                       "ko": "다음", "kind": "ui", "module": "portal"},
 ]
 
 

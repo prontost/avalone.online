@@ -234,6 +234,23 @@ class JobPostRepository:
             rows = con.execute(sql, params).fetchall()
         return [self._row_to_post(r) for r in rows]
 
+    def list_since(
+        self,
+        since: datetime,
+        limit: int = 50,
+    ) -> list[JobPost]:
+        """Return posts published or parsed since ``since`` (UTC), newest first."""
+        iso = since.isoformat()
+        sql = (
+            "SELECT * FROM work_job_posts "
+            "WHERE COALESCE(posted_at, parsed_at) >= ? "
+            "ORDER BY COALESCE(posted_at, parsed_at) DESC "
+            "LIMIT ?"
+        )
+        with connection() as con:
+            rows = con.execute(sql, (iso, limit)).fetchall()
+        return [self._row_to_post(r) for r in rows]
+
     def update_translations(
         self,
         external_guid: str,

@@ -122,10 +122,18 @@ def _apply_batch(
         if not item:
             _log(f"No translation returned for {post.external_guid}")
             continue
+        title = (item.get("title_translated") or "").strip()
+        description = (item.get("description_translated") or "").strip()
+        if not title or not description:
+            _log(
+                f"Empty translation returned for {post.external_guid} "
+                f"(title={bool(title)}, desc={bool(description)})"
+            )
+            continue
         service.repository.update_translations(
             post.external_guid,
-            item.get("title_translated", ""),
-            item.get("description_translated", ""),
+            title,
+            description,
         )
         applied += 1
     return applied

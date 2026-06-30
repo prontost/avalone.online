@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 
 from avalone_landing.core.jobs.service import JobPostService
 from avalone_landing.web.dependencies import current_user, get_shell_context
@@ -98,12 +102,39 @@ async def work_index(
     return _no_cache(templates.TemplateResponse(request, "work.html", ctx))
 
 
-@router.post("/fetch", response_class=RedirectResponse)
-async def work_fetch(request: Request, days: str = "14"):
-    """Trigger a fresh fetch from the configured job boards."""
-    try:
-        max_age_days = int(days) if days else 14
-    except ValueError:
-        max_age_days = 14
-    JobPostService().fetch_and_store(max_age_days=max_age_days)
-    return RedirectResponse(f"/work?days={max_age_days}", status_code=303)
+@router.get("/events")
+async def work_events(request: Request):
+    """Server-Sent Events stream for new job postings."""
+    service = JobPostService()
+    last_check = datetime.now(timezone.utc)
+
+    async def event_generator():
+        nonlocal last_check
+        while True:
+            if await request.is_disconnected():
+                break
+            await asyncio.sleep(5)
+            try:
+                new_posts = service.repository.list_since(last_check)
+            except Exception:
+                new_posts = []
+            if new_posts:
+                last_check = datetime.now(timezone.utc)
+                payload = json.dumps(
+                    {
+                        "count": len(new_posts),
+                        "latest_id": new_posts[0].external_guid,
+                    },
+                    ensure_ascii=False,
+                )
+                yield f"event: new-posts\ndata: {payload}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

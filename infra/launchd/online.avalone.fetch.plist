@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>online.avalone.fetch</string>
+    <key>WorkingDirectory</key>
+    <string>/Users/lucifer/github-work/avalone.online</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/lucifer/github-work/avalone.online/.venv/bin/python</string>
+        <string>/Users/lucifer/github-work/avalone.online/scripts/fetch_jobs.py</string>
+        <string>--days</string>
+        <string>14</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StartInterval</key>
+    <integer>300</integer>
+    <key>StandardOutPath</key>
+    <string>/Users/lucifer/Library/Logs/avalone-fetch.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/lucifer/Library/Logs/avalone-fetch.log</string>
+</dict>
+</plist>

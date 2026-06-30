@@ -348,3 +348,38 @@ def test_work_index_renders_feed() -> None:
     response = client.get("/work")
     assert response.status_code == 200
     assert "Тест отображения" in response.text
+
+
+def test_repository_list_since_returns_recent_posts() -> None:
+    repo = JobPostRepository()
+    now = datetime.now(timezone.utc)
+    repo.save(
+        JobPost(
+            external_guid="since-old",
+            source_site="koreabridge.net",
+            source_url="https://example.com/old",
+            title="Old",
+            description_html="",
+            description_text="",
+            posted_at=now - timedelta(days=2),
+            content_hash="since-old-hash",
+            country="KR",
+        )
+    )
+    repo.save(
+        JobPost(
+            external_guid="since-new",
+            source_site="koreabridge.net",
+            source_url="https://example.com/new",
+            title="New",
+            description_html="",
+            description_text="",
+            posted_at=now,
+            content_hash="since-new-hash",
+            country="KR",
+        )
+    )
+    recent = repo.list_since(now - timedelta(minutes=1))
+    guids = {p.external_guid for p in recent}
+    assert "since-new" in guids
+    assert "since-old" not in guids
