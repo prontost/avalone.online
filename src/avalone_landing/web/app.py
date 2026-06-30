@@ -2,6 +2,7 @@
 
 import hashlib
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Request
@@ -63,6 +64,7 @@ templates = Jinja2Templates(directory=[str(_templates_dir), str(_ui_templates_di
 templates.env.globals["t"] = glossary.t
 templates.env.globals["i18n_js"] = glossary.i18n_js
 templates.env.globals["registry"] = AvaloneRegistry
+templates.env.globals["now"] = lambda: datetime.now(timezone.utc)
 
 
 def _replace_query_param(query: object, key: str, value: object) -> str:

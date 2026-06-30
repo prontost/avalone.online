@@ -32,3 +32,5 @@ class JobPost:
     job_type: str = ""
     salary: str = ""
     pay_type: str = ""
+    content_hash: str = ""
+    country: str = ""

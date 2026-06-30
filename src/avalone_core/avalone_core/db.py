@@ -370,6 +370,8 @@ def _apply_migrations() -> None:
                 job_type             TEXT,
                 salary               TEXT,
                 pay_type             TEXT,
+                content_hash         TEXT,
+                country              TEXT,
                 posted_at            TEXT,
                 parsed_at            TEXT NOT NULL,
                 raw_json             TEXT
@@ -383,13 +385,13 @@ def _apply_migrations() -> None:
             work_cols = {r[1] for r in con.execute("PRAGMA table_info(work_job_posts)")}
         except sqlite3.OperationalError:
             work_cols = set()
-        for col, dtype in (("salary", "TEXT"), ("pay_type", "TEXT")):
+        for col, dtype in (("salary", "TEXT"), ("pay_type", "TEXT"), ("content_hash", "TEXT"), ("country", "TEXT")):
             if col not in work_cols:
                 try:
                     con.execute(f"ALTER TABLE work_job_posts ADD COLUMN {col} {dtype}")
                 except sqlite3.OperationalError:
                     pass
-        for idx_col in ("salary", "pay_type"):
+        for idx_col in ("salary", "pay_type", "content_hash", "country"):
             try:
                 con.execute(
                     f"CREATE INDEX IF NOT EXISTS idx_work_job_posts_{idx_col} "

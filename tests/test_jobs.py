@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 
 from avalone_landing.core.jobs.models import JobPost
-from avalone_landing.core.jobs.parser import AlbamonParser, KoreabridgeRSSParser
+from avalone_landing.core.jobs.parser import AlbamonParser, KoreabridgeRSSParser, SaraminParser
 from avalone_landing.core.jobs.repository import JobPostRepository
 from avalone_landing.core.jobs.service import JobPostService
 from avalone_landing.web.app import app
@@ -46,6 +46,7 @@ def test_parser_filters_old_posts() -> None:
     assert len(posts) == 1
     assert posts[0].external_guid == "job-1"
     assert "010-1234-5678" in posts[0].description_text
+    assert posts[0].country == "KR"
 
 
 def test_albamon_parser_extracts_jobs() -> None:
@@ -53,7 +54,7 @@ def test_albamon_parser_extracts_jobs() -> None:
     <html><body>
     <script id="__NEXT_DATA__" type="application/json">
     {"props":{"pageProps":{"dehydratedState":{"queries":[{"state":{"data":{"collection":[
-        {"recruitNo": 12345, "recruitTitle": "카페 알바", "workplaceArea": "강남구", "companyName": "ABC카페", "pay": "12,000원", "payType": {"description": "시급"}}
+        {"recruitNo": 12345, "recruitTitle": "카페 알바", "workplaceArea": "강남구", "companyName": "ABC카페", "pay": "12,000원", "payType": {"description": "시급", "key": "HOURLY_WAGE"}}
     ]}}}]}}}}
     </script>
     </body></html>
@@ -66,7 +67,32 @@ def test_albamon_parser_extracts_jobs() -> None:
     assert posts[0].source_site == "albamon.com"
     assert posts[0].salary == "12,000원"
     assert posts[0].pay_type == "시급"
+    assert posts[0].job_type == "Part-time / hourly"
+    assert posts[0].country == "KR"
     assert "albamon.com/jobs/detail/12345" in posts[0].source_url
+
+
+def test_saramin_parser_extracts_jobs() -> None:
+    html = """
+    <div class="item_recruit">
+      <div class="job_tit"><a href="/zf_user/jobs/relay/view?rec_idx=12345">Software Engineer</a></div>
+      <div class="corp_name"><a>ACME Corp</a></div>
+      <div class="job_condition">서울 강남구 경력무관 학력무관 정규직</div>
+      <div class="job_date"><span class="date">~ 08/11(화)</span></div>
+    </div>
+    """
+    parser = SaraminParser()
+    posts = parser.parse(html)
+
+    assert len(posts) == 1
+    assert posts[0].external_guid == "saramin:12345"
+    assert posts[0].title == "Software Engineer"
+    assert posts[0].employer == "ACME Corp"
+    assert posts[0].job_type == "Full-time"
+    assert posts[0].location == "서울 강남구"
+    assert posts[0].country == "KR"
+    assert posts[0].posted_at is None  # Saramin dates are deadlines, not posting dates
+    assert "saramin.co.kr" in posts[0].source_url
 
 
 def test_service_extracts_contacts_and_visa() -> None:
@@ -81,11 +107,13 @@ def test_service_extracts_contacts_and_visa() -> None:
     )
     service = JobPostService(parser=KoreabridgeRSSParser(), repository=JobPostRepository())
     service._extract_fields(post)
+    service._compute_content_hash(post)
 
     assert post.contact_phone == "010-9876-5432"
     assert post.contact_email == "hr@school.kr"
     assert "E-2" in post.visa_type
     assert post.employer == "School HR"
+    assert len(post.content_hash) == 64
 
 
 def test_repository_saves_and_lists() -> None:
@@ -102,8 +130,11 @@ def test_repository_saves_and_lists() -> None:
         contact_phone="010-1111-2222",
         salary="3.0M",
         pay_type="월급",
+        content_hash="abc123",
+        country="KR",
     )
-    repo.save(post)
+    row_id, status = repo.save(post)
+    assert status == "inserted"
     rows = repo.list_recent(limit=10)
     guids = {r.external_guid for r in rows}
     assert "repo-test" in guids
@@ -121,6 +152,8 @@ def test_repository_filters_by_source_and_query() -> None:
             description_text="",
             location="Seoul",
             salary="12,000원",
+            content_hash="hash1",
+            country="KR",
         )
     )
     repo.save(
@@ -132,6 +165,8 @@ def test_repository_filters_by_source_and_query() -> None:
             description_html="",
             description_text="",
             location="Busan",
+            content_hash="hash2",
+            country="KR",
         )
     )
     seoul_jobs = repo.list_recent(source_site="albamon.com", query="cafe")
@@ -153,6 +188,8 @@ def test_fetch_preserves_existing_translation_and_posted_at() -> None:
             title_translated="Перевод",
             description_translated="Переведённый текст",
             posted_at=posted,
+            content_hash="hash-preserve",
+            country="KR",
         )
     )
     # Re-save with empty translations and a different date — upsert must keep the existing ones.
@@ -167,6 +204,8 @@ def test_fetch_preserves_existing_translation_and_posted_at() -> None:
             title_translated="",
             description_translated="",
             posted_at=datetime.now(timezone.utc),
+            content_hash="hash-preserve",
+            country="KR",
         )
     )
     posts = [p for p in repo.list_recent(limit=100) if p.external_guid == "preserve-test"]
@@ -175,6 +214,24 @@ def test_fetch_preserves_existing_translation_and_posted_at() -> None:
     assert post.title_translated == "Перевод"
     assert post.description_translated == "Переведённый текст"
     assert post.posted_at == posted
+
+
+def test_content_hash_avoids_unnecessary_update() -> None:
+    repo = JobPostRepository()
+    post = JobPost(
+        external_guid="dedup-test",
+        source_site="albamon.com",
+        source_url="https://example.com/dedup",
+        title="Same",
+        description_html="",
+        description_text="Same body",
+        content_hash="dedup-hash",
+        country="KR",
+    )
+    _, status1 = repo.save(post)
+    assert status1 == "inserted"
+    _, status2 = repo.save(post)
+    assert status2 == "unchanged"
 
 
 def test_work_index_renders_feed() -> None:
@@ -189,6 +246,8 @@ def test_work_index_renders_feed() -> None:
             description_text="Text",
             title_translated="Тест отображения",
             description_translated="Текст объявления",
+            content_hash="render-hash",
+            country="KR",
         )
     )
     client = TestClient(app)

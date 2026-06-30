@@ -15,45 +15,93 @@ from .models import JobPost
 class JobPostRepository:
     """Store and retrieve ``JobPost`` rows from the unified Avalone database."""
 
-    def save(self, post: JobPost) -> int:
-        """Insert a post or update it if the external GUID already exists."""
-        row = self._post_to_row(post)
-        columns = [
-            "external_guid",
-            "source_site",
-            "source_url",
-            "title",
-            "title_translated",
-            "description_html",
-            "description_text",
-            "description_translated",
-            "employer",
-            "contact_phone",
-            "contact_email",
-            "visa_type",
-            "location",
-            "job_type",
-            "salary",
-            "pay_type",
-            "posted_at",
-            "parsed_at",
-            "raw_json",
-        ]
-        placeholders = ", ".join(["?"] * len(columns))
-        # Preserve existing translations and first-seen posted date on re-fetch.
-        preserve = {"title_translated", "description_translated", "posted_at"}
-        updates = ", ".join(
-            f"{c}=excluded.{c}" for c in columns if c != "external_guid" and c not in preserve
-        )
-        sql = (
-            f"INSERT INTO work_job_posts ({', '.join(columns)}) "
-            f"VALUES ({placeholders}) "
-            f"ON CONFLICT(external_guid) DO UPDATE SET {updates}"
-        )
+    def save(self, post: JobPost) -> tuple[int, str]:
+        """Insert a post or update it only if content changed.
+
+        Returns (row_id, status) where status is one of:
+        'inserted', 'updated', 'unchanged'.
+        """
         with connection() as con:
-            cur = con.execute(sql, row)
+            existing = con.execute(
+                "SELECT id, content_hash, title_translated, description_translated FROM work_job_posts WHERE external_guid = ?",
+                (post.external_guid,),
+            ).fetchone()
+
+            if existing is None:
+                row = self._post_to_row(post)
+                cur = con.execute(
+                    "INSERT INTO work_job_posts (external_guid, source_site, source_url, title, title_translated, description_html, description_text, description_translated, employer, contact_phone, contact_email, visa_type, location, job_type, salary, pay_type, content_hash, country, posted_at, parsed_at, raw_json) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    row,
+                )
+                con.commit()
+                return cur.lastrowid or 0, "inserted"
+
+            if existing["content_hash"] == post.content_hash:
+                # Content unchanged: only refresh parsed_at and raw_json for observability.
+                con.execute(
+                    "UPDATE work_job_posts SET parsed_at = ?, raw_json = ? WHERE id = ?",
+                    (
+                        datetime.now(timezone.utc).isoformat(),
+                        json.dumps(post.raw, ensure_ascii=False) if post.raw else None,
+                        existing["id"],
+                    ),
+                )
+                con.commit()
+                return existing["id"], "unchanged"
+
+            # Content changed: update all fields except posted_at and existing translations.
+            title_translated = existing["title_translated"] or ""
+            description_translated = existing["description_translated"] or ""
+            con.execute(
+                """
+                UPDATE work_job_posts SET
+                    source_site = ?,
+                    source_url = ?,
+                    title = ?,
+                    title_translated = ?,
+                    description_html = ?,
+                    description_text = ?,
+                    description_translated = ?,
+                    employer = ?,
+                    contact_phone = ?,
+                    contact_email = ?,
+                    visa_type = ?,
+                    location = ?,
+                    job_type = ?,
+                    salary = ?,
+                    pay_type = ?,
+                    content_hash = ?,
+                    country = ?,
+                    parsed_at = ?,
+                    raw_json = ?
+                WHERE id = ?
+                """,
+                (
+                    post.source_site,
+                    post.source_url,
+                    post.title,
+                    title_translated,
+                    post.description_html,
+                    post.description_text,
+                    description_translated,
+                    post.employer,
+                    post.contact_phone,
+                    post.contact_email,
+                    post.visa_type,
+                    post.location,
+                    post.job_type,
+                    post.salary,
+                    post.pay_type,
+                    post.content_hash,
+                    post.country,
+                    datetime.now(timezone.utc).isoformat(),
+                    json.dumps(post.raw, ensure_ascii=False) if post.raw else None,
+                    existing["id"],
+                ),
+            )
             con.commit()
-            return cur.lastrowid or 0
+            return existing["id"], "updated"
 
     def list_recent(
         self,
@@ -65,6 +113,7 @@ class JobPostRepository:
         query: str | None = None,
         visa_type: str | None = None,
         job_type: str | None = None,
+        country: str | None = None,
     ) -> list[JobPost]:
         """Return recent posts with optional filters."""
         where, params = self._build_where(
@@ -74,6 +123,7 @@ class JobPostRepository:
             query=query,
             visa_type=visa_type,
             job_type=job_type,
+            country=country,
         )
 
         sql = (
@@ -95,6 +145,7 @@ class JobPostRepository:
         query: str | None = None,
         visa_type: str | None = None,
         job_type: str | None = None,
+        country: str | None = None,
     ) -> int:
         where, params = self._build_where(
             location=location,
@@ -103,6 +154,7 @@ class JobPostRepository:
             query=query,
             visa_type=visa_type,
             job_type=job_type,
+            country=country,
         )
         sql = (
             "SELECT COUNT(*) AS n FROM work_job_posts "
@@ -120,6 +172,7 @@ class JobPostRepository:
         query: str | None = None,
         visa_type: str | None = None,
         job_type: str | None = None,
+        country: str | None = None,
     ) -> tuple[list[str], list[Any]]:
         where: list[str] = []
         params: list[Any] = []
@@ -148,6 +201,9 @@ class JobPostRepository:
             where.append("(job_type LIKE ? OR title LIKE ? OR description_text LIKE ?)")
             j = f"%{job_type}%"
             params.extend([j, j, j])
+        if country:
+            where.append("country = ?")
+            params.append(country)
         return where, params
 
     def list_untranslated(self, limit: int = 100) -> list[JobPost]:
@@ -192,6 +248,15 @@ class JobPostRepository:
         with connection() as con:
             rows = con.execute(sql).fetchall()
         return [r["location"] for r in rows]
+
+    def list_countries(self) -> list[str]:
+        sql = (
+            "SELECT DISTINCT country FROM work_job_posts "
+            "WHERE country IS NOT NULL AND country != '' ORDER BY country"
+        )
+        with connection() as con:
+            rows = con.execute(sql).fetchall()
+        return [r["country"] for r in rows]
 
     def list_pay_types(self) -> list[str]:
         sql = (
@@ -243,6 +308,8 @@ class JobPostRepository:
             post.job_type,
             post.salary,
             post.pay_type,
+            post.content_hash,
+            post.country,
             post.posted_at.isoformat() if post.posted_at else None,
             datetime.now(timezone.utc).isoformat(),
             json.dumps(post.raw, ensure_ascii=False) if post.raw else None,
@@ -281,4 +348,6 @@ class JobPostRepository:
             job_type=row["job_type"] or "",
             salary=row["salary"] or "",
             pay_type=row["pay_type"] or "",
+            content_hash=row["content_hash"] or "",
+            country=row["country"] or "",
         )

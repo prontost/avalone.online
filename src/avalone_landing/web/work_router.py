@@ -36,6 +36,7 @@ async def work_index(
     q: str = "",
     visa: str = "",
     job_type: str = "",
+    country: str = "",
     page: str = "1",
     user=Depends(current_user),
     shell_context: ShellContext = Depends(get_shell_context),
@@ -65,6 +66,7 @@ async def work_index(
         "query": q or None,
         "visa_type": visa or None,
         "job_type": job_type or None,
+        "country": country or None,
     }
 
     total = service.count_recent(**filters)
@@ -79,12 +81,14 @@ async def work_index(
             "pay_types": service.repository.list_pay_types(),
             "visa_types": service.repository.list_visa_types(),
             "job_types": service.repository.list_job_types(),
+            "countries": service.repository.list_countries(),
             "selected_location": location,
             "selected_source": source,
             "selected_days": str(max_age_days) if max_age_days is not None else "",
             "selected_query": q,
             "selected_visa": visa,
             "selected_job_type": job_type,
+            "selected_country": country,
             "current_page": current_page,
             "total_pages": total_pages,
             "total_jobs": total,

@@ -11,6 +11,7 @@
 {% set delta = (now - dt).days %}
 {% if delta == 0 %}{{ t('work_today', lang=lang) }}
 {% elif delta == 1 %}{{ t('work_yesterday', lang=lang) }}
+{% elif delta < 0 %}{{ -delta }} {{ t('work_days_left', lang=lang)|default('дн. до дедлайна') }}
 {% else %}{{ delta }} {{ t('work_days_ago', lang=lang) }}{% endif %}
 {% endmacro %}
 
@@ -75,6 +76,16 @@
         <option value="" {% if not selected_job_type %}selected{% endif %}>{{ t('work_filter_all', lang=lang) }}</option>
         {% for jt in job_types %}
         <option value="{{ jt }}" {% if selected_job_type == jt %}selected{% endif %}>{{ jt }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="work-filter">
+      <label for="filter-country">{{ t('work_filter_country', lang=lang)|default('Страна') }}</label>
+      <select id="filter-country" name="country">
+        <option value="" {% if not selected_country %}selected{% endif %}>{{ t('work_filter_all', lang=lang) }}</option>
+        {% for c in countries %}
+        <option value="{{ c }}" {% if selected_country == c %}selected{% endif %}>{{ c }}</option>
         {% endfor %}
       </select>
     </div>

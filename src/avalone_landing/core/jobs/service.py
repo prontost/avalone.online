@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from datetime import datetime, timezone
 
@@ -22,16 +24,22 @@ class JobPostService:
         self.repository = repository or JobPostRepository()
 
     def fetch_and_store(self, max_age_days: int = 14) -> dict[str, int]:
-        """Fetch recent posts from all sources, extract fields, and persist them."""
+        """Fetch recent posts from all sources, extract fields, and persist them.
+
+        Uses content hashing to avoid rewriting identical postings every run.
+        """
         now = datetime.now(timezone.utc)
         posts = self.parser.fetch(max_age_days=max_age_days)
+        stats = {"fetched": len(posts), "inserted": 0, "updated": 0, "unchanged": 0}
         for post in posts:
             self._extract_fields(post)
             # Albamon does not expose posting dates; freeze the first time we see it.
             if post.posted_at is None and isinstance(self.parser, AlbamonParser):
                 post.posted_at = now
-            self.repository.save(post)
-        return {"fetched": len(posts), "stored": len(posts)}
+            self._compute_content_hash(post)
+            _, status = self.repository.save(post)
+            stats[status] += 1
+        return stats
 
     def list_recent(
         self,
@@ -43,6 +51,7 @@ class JobPostService:
         query: str | None = None,
         visa_type: str | None = None,
         job_type: str | None = None,
+        country: str | None = None,
     ) -> list[JobPost]:
         return self.repository.list_recent(
             limit=limit,
@@ -53,6 +62,7 @@ class JobPostService:
             query=query,
             visa_type=visa_type,
             job_type=job_type,
+            country=country,
         )
 
     def count_recent(
@@ -63,6 +73,7 @@ class JobPostService:
         query: str | None = None,
         visa_type: str | None = None,
         job_type: str | None = None,
+        country: str | None = None,
     ) -> int:
         return self.repository.count_recent(
             location=location,
@@ -71,6 +82,7 @@ class JobPostService:
             query=query,
             visa_type=visa_type,
             job_type=job_type,
+            country=country,
         )
 
     def list_untranslated(self, limit: int = 100) -> list[JobPost]:
@@ -109,6 +121,23 @@ class JobPostService:
         # Location: simple keyword extraction if not already set.
         if not post.location:
             post.location = self._extract_location(text + " " + post.title)
+
+    @staticmethod
+    def _compute_content_hash(post: JobPost) -> None:
+        payload = {
+            "title": post.title,
+            "description_text": post.description_text,
+            "employer": post.employer,
+            "location": post.location,
+            "job_type": post.job_type,
+            "salary": post.salary,
+            "pay_type": post.pay_type,
+            "visa_type": post.visa_type,
+            "source_url": post.source_url,
+        }
+        post.content_hash = hashlib.sha256(
+            json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        ).hexdigest()
 
     @staticmethod
     def _normalize_visa(value: str) -> str:

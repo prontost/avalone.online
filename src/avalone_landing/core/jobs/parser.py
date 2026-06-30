@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
+from bs4 import BeautifulSoup
 
 from .models import JobPost
 
@@ -78,6 +79,7 @@ class KoreabridgeRSSParser(BaseJobParser):
                     description_text=self._html_to_text(description),
                     posted_at=posted_at,
                     author=author,
+                    country="KR",
                     raw={
                         "title": title,
                         "description": description,
@@ -155,8 +157,10 @@ class AlbamonParser(BaseJobParser):
             company = (item.get("companyName") or "").strip()
             pay = (item.get("pay") or "").strip()
             pay_type = ""
+            pay_type_key = ""
             if isinstance(item.get("payType"), dict):
                 pay_type = (item["payType"].get("description") or "").strip()
+                pay_type_key = (item["payType"].get("key") or "").strip()
 
             posts.append(
                 JobPost(
@@ -172,6 +176,8 @@ class AlbamonParser(BaseJobParser):
                     location=area,
                     salary=pay,
                     pay_type=pay_type,
+                    job_type=self._pay_type_to_job_type(pay_type_key),
+                    country="KR",
                 )
             )
         return posts
@@ -215,12 +221,135 @@ class AlbamonParser(BaseJobParser):
         ]
         return "\n".join(p for p in parts if p).strip()
 
+    @staticmethod
+    def _pay_type_to_job_type(pay_type_key: str) -> str:
+        mapping = {
+            "HOURLY_WAGE": "Part-time / hourly",
+            "DAILY_WAGE": "Daily pay",
+            "MONTHLY_SALARY": "Full-time / monthly",
+            "YEARLY_SALARY": "Full-time / yearly",
+            "PER_TASK": "Per task",
+        }
+        return mapping.get(pay_type_key, "")
+
+
+class SaraminParser(BaseJobParser):
+    """Fetch and parse Saramin search results (full-time / contract jobs)."""
+
+    SEARCH_URL = "https://www.saramin.co.kr/zf_user/search/recruit"
+    USER_AGENT = (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+    )
+
+    @property
+    def source_site(self) -> str:
+        return "saramin.co.kr"
+
+    def fetch(self, max_age_days: int = 14) -> list[JobPost]:
+        # Saramin search is SSR HTML; we parse the first results page.
+        params = {"searchword": "외국인"}
+        with httpx.Client(
+            headers={"User-Agent": self.USER_AGENT},
+            timeout=30,
+            follow_redirects=True,
+        ) as client:
+            response = client.get(self.SEARCH_URL, params=params)
+        response.raise_for_status()
+        return self.parse(response.text)
+
+    def parse(self, html_text: str) -> list[JobPost]:
+        soup = BeautifulSoup(html_text, "html.parser")
+        posts: list[JobPost] = []
+        for item in soup.select(".item_recruit"):
+            title_a = item.select_one(".job_tit a")
+            if not title_a:
+                continue
+            title = title_a.get_text(strip=True)
+            href = title_a.get("href", "")
+            rec_idx = self._extract_rec_idx(href)
+            if not rec_idx:
+                continue
+
+            company_a = item.select_one(".corp_name a")
+            company = company_a.get_text(strip=True) if company_a else ""
+            condition_el = item.select_one(".job_condition")
+            condition = condition_el.get_text(" ", strip=True) if condition_el else ""
+            date_el = item.select_one(".job_date .date")
+            date_text = date_el.get_text(strip=True) if date_el else ""
+
+            job_type = self._extract_job_type(condition)
+            posted_at = self._parse_date(date_text)
+
+            posts.append(
+                JobPost(
+                    external_guid=f"saramin:{rec_idx}",
+                    source_site=self.source_site,
+                    source_url=f"https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx={rec_idx}",
+                    title=title,
+                    description_html=str(item),
+                    description_text=f"{condition}\n{date_text}".strip(),
+                    posted_at=posted_at,
+                    author=company,
+                    employer=company,
+                    location=self._extract_location(condition),
+                    job_type=job_type,
+                    country="KR",
+                    raw={
+                        "title": title,
+                        "company": company,
+                        "condition": condition,
+                        "date_text": date_text,
+                        "rec_idx": rec_idx,
+                    },
+                )
+            )
+        return posts
+
+    def _extract_rec_idx(self, href: str) -> str:
+        match = re.search(r"[?&]rec_idx=(\d+)", href)
+        return match.group(1) if match else ""
+
+    def _extract_location(self, condition: str) -> str:
+        # Conditions look like: "서울 강남구 경력무관 학력무관 정규직"
+        parts = condition.split()
+        if parts and parts[0] in ("서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종"):
+            return " ".join(parts[:2]) if len(parts) > 1 else parts[0]
+        if parts and parts[0] in ("경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"):
+            return " ".join(parts[:2]) if len(parts) > 1 else parts[0]
+        return ""
+
+    def _extract_job_type(self, condition: str) -> str:
+        if "정규직" in condition:
+            return "Full-time"
+        if "계약직" in condition:
+            return "Contract"
+        if "기간제" in condition:
+            return "Fixed-term"
+        if "인턴" in condition:
+            return "Internship"
+        return ""
+
+    def _parse_date(self, value: str) -> datetime | None:
+        if not value:
+            return None
+        value = value.strip()
+        now = datetime.now(timezone.utc)
+        # "~ 08/11(화)" is an application deadline, not a posting date.
+        if value.startswith("~"):
+            return None
+        if "오늘마감" in value or value == "오늘":
+            return now
+        if "내일마감" in value or value == "내일":
+            return now + timedelta(days=1)
+        return None
+
 
 class MultiSourceParser(BaseJobParser):
     """Aggregate posts from all configured sources."""
 
     def __init__(self, parsers: list[BaseJobParser] | None = None) -> None:
-        self.parsers = parsers or [KoreabridgeRSSParser(), AlbamonParser()]
+        self.parsers = parsers or [KoreabridgeRSSParser(), AlbamonParser(), SaraminParser()]
 
     @property
     def source_site(self) -> str:
