@@ -10,10 +10,15 @@
 <div class="avalone-work">
   <div class="work-header">
     <h1>{{ t('work_page_title', lang=lang) }}</h1>
-    <form action="/work/fetch" method="post" class="work-fetch-form">
-      <input type="hidden" name="days" value="{{ selected_days or '14' }}">
-      <button type="submit" class="avalone-btn avalone-btn-primary">{{ t('work_refresh', lang=lang) }}</button>
-    </form>
+    <div class="work-header__actions">
+      <button type="button" class="avalone-btn work-original-toggle" id="work-original-toggle">
+        {{ t('work_show_original', lang=lang) }}
+      </button>
+      <form action="/work/fetch" method="post" class="work-fetch-form">
+        <input type="hidden" name="days" value="{{ selected_days or '14' }}">
+        <button type="submit" class="avalone-btn avalone-btn-primary">{{ t('work_refresh', lang=lang) }}</button>
+      </form>
+    </div>
   </div>
 
   <div class="work-disclaimer">
@@ -52,6 +57,20 @@
     </div>
   </form>
 
+  <script>
+  (function () {
+    var container = document.querySelector('.avalone-work');
+    var btn = document.getElementById('work-original-toggle');
+    if (!container || !btn) return;
+    var translatedLabel = {{ t('work_show_original', lang=lang)|tojson }};
+    var originalLabel = {{ t('work_show_translation', lang=lang)|tojson }};
+    btn.addEventListener('click', function () {
+      container.classList.toggle('show-original');
+      btn.textContent = container.classList.contains('show-original') ? originalLabel : translatedLabel;
+    });
+  })();
+  </script>
+
   {% if jobs %}
   <div class="job-list">
     {% for job in jobs %}
@@ -65,8 +84,11 @@
         <span class="job-card__source">{{ t('work_source_label', lang=lang) }}: {{ job.source_site }}</span>
       </div>
 
-      <h2 class="job-card__title">
+      <h2 class="job-card__title job-title-translated">
         {{ job.title_translated or job.title }}
+      </h2>
+      <h2 class="job-card__title job-title-original">
+        {{ job.title }}
       </h2>
 
       {% if job.location or job.visa_type or job.job_type %}
@@ -77,8 +99,11 @@
       </div>
       {% endif %}
 
-      <div class="job-card__body">
+      <div class="job-card__body job-body-translated">
         {{ (job.description_translated or job.description_text or job.description_html)|safe }}
+      </div>
+      <div class="job-card__body job-body-original">
+        {{ job.description_text|safe }}
       </div>
 
       <div class="job-card__contacts">

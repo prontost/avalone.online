@@ -20,6 +20,33 @@
   margin: 0;
 }
 
+.work-header__actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.work-original-toggle {
+  background: var(--card-bg, #141820);
+  border: 1px solid var(--line, #252a35);
+  color: var(--text, #e1e6f0);
+}
+
+.avalone-work .job-title-original,
+.avalone-work .job-body-original {
+  display: none;
+}
+
+.avalone-work.show-original .job-title-translated,
+.avalone-work.show-original .job-body-translated {
+  display: none;
+}
+
+.avalone-work.show-original .job-title-original,
+.avalone-work.show-original .job-body-original {
+  display: block;
+}
+
 .work-disclaimer {
   font-size: 0.85rem;
   color: var(--muted, #8b92a8);

@@ -139,6 +139,38 @@ def test_repository_filters_by_source_and_location() -> None:
     assert seoul_jobs[0].external_guid == "filter-seoul"
 
 
+def test_fetch_preserves_existing_translation() -> None:
+    repo = JobPostRepository()
+    repo.save(
+        JobPost(
+            external_guid="preserve-test",
+            source_site="koreabridge.net",
+            source_url="https://example.com/preserve",
+            title="Original",
+            description_html="<p>Original body</p>",
+            description_text="Original body",
+            title_translated="Перевод",
+            description_translated="Переведённый текст",
+        )
+    )
+    # Re-save with empty translations — upsert must keep the existing ones.
+    repo.save(
+        JobPost(
+            external_guid="preserve-test",
+            source_site="koreabridge.net",
+            source_url="https://example.com/preserve",
+            title="Original",
+            description_html="<p>Original body</p>",
+            description_text="Original body",
+            title_translated="",
+            description_translated="",
+        )
+    )
+    post = repo.list_recent(limit=1)[0]
+    assert post.title_translated == "Перевод"
+    assert post.description_translated == "Переведённый текст"
+
+
 def test_work_index_renders_feed() -> None:
     repo = JobPostRepository()
     repo.save(

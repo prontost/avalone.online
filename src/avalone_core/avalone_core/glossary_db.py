@@ -404,6 +404,8 @@ _PORTAL_SEED_EXTRA: list[dict[str, Any]] = [
     {"key": "work_filter_all",               "ru": "Все",                                                 "en": "All",                                        "ko": "전체", "kind": "ui", "module": "portal"},
     {"key": "work_filter_all_time",          "ru": "За всё время",                                        "en": "All time",                                   "ko": "전체 기간", "kind": "ui", "module": "portal"},
     {"key": "work_days",                     "ru": "дн.",                                                 "en": "days",                                       "ko": "일", "kind": "ui", "module": "portal"},
+    {"key": "work_show_original",            "ru": "Оригинал",                                            "en": "Original",                                   "ko": "원문", "kind": "ui", "module": "portal"},
+    {"key": "work_show_translation",         "ru": "Перевод",                                             "en": "Translation",                                "ko": "번역", "kind": "ui", "module": "portal"},
 ]
 
 

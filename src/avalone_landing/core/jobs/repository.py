@@ -38,7 +38,11 @@ class JobPostRepository:
             "raw_json",
         ]
         placeholders = ", ".join(["?"] * len(columns))
-        updates = ", ".join(f"{c}=excluded.{c}" for c in columns if c != "external_guid")
+        # Preserve existing translations on re-fetch.
+        preserve = {"title_translated", "description_translated"}
+        updates = ", ".join(
+            f"{c}=excluded.{c}" for c in columns if c != "external_guid" and c not in preserve
+        )
         sql = (
             f"INSERT INTO work_job_posts ({', '.join(columns)}) "
             f"VALUES ({placeholders}) "
