@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from .models import JobPost
-from .parser import KoreabridgeRSSParser
+from .parser import BaseJobParser, ExpatComKoreaParser, KoreabridgeRSSParser, MultiSourceParser
 from .repository import JobPostRepository
 
 
@@ -14,22 +14,33 @@ class JobPostService:
 
     def __init__(
         self,
-        parser: KoreabridgeRSSParser | None = None,
+        parser: BaseJobParser | None = None,
         repository: JobPostRepository | None = None,
     ) -> None:
-        self.parser = parser or KoreabridgeRSSParser()
+        self.parser = parser or MultiSourceParser()
         self.repository = repository or JobPostRepository()
 
-    def fetch_and_store(self) -> dict[str, int]:
-        """Fetch recent posts, extract fields, and persist them (no translation)."""
-        posts = self.parser.fetch()
+    def fetch_and_store(self, max_age_days: int = 14) -> dict[str, int]:
+        """Fetch recent posts from all sources, extract fields, and persist them."""
+        posts = self.parser.fetch(max_age_days=max_age_days)
         for post in posts:
             self._extract_fields(post)
             self.repository.save(post)
         return {"fetched": len(posts), "stored": len(posts)}
 
-    def list_recent(self, limit: int = 100) -> list[JobPost]:
-        return self.repository.list_recent(limit)
+    def list_recent(
+        self,
+        limit: int = 100,
+        location: str | None = None,
+        source_site: str | None = None,
+        max_age_days: int | None = None,
+    ) -> list[JobPost]:
+        return self.repository.list_recent(
+            limit=limit,
+            location=location,
+            source_site=source_site,
+            max_age_days=max_age_days,
+        )
 
     def list_untranslated(self, limit: int = 100) -> list[JobPost]:
         return self.repository.list_untranslated(limit)
@@ -38,8 +49,8 @@ class JobPostService:
         """Pull employer, phone, email, visa, location, and job type from the text."""
         text = post.description_text
 
-        # Employer: prefer the RSS author.
-        post.employer = post.author or ""
+        # Employer: prefer already-set employer, then RSS author.
+        post.employer = post.employer or post.author or ""
 
         # Phone numbers (Korean mobile / landline patterns).
         phones = re.findall(
@@ -57,19 +68,16 @@ class JobPostService:
 
         # Visa types commonly mentioned in Korea job ads.
         visa_pattern = re.compile(
-            r"\b(E-?[2-7]|F-?[2-6]|F-?5|H-?1|D-?2|D-?4|D-?10)\b",
+            r"\b(E-?[2-7]|F-?[2-6]|F-?5|H-?1|D-?[2-4]|D-?10)\b",
             re.IGNORECASE,
         )
-        visas = sorted({v.upper().replace("-", "-") for v in visa_pattern.findall(text)})
-        # Normalize e.g. "E2" -> "E-2".
+        visas = sorted({v.upper() for v in visa_pattern.findall(text)})
         visas = [self._normalize_visa(v) for v in visas]
         post.visa_type = ", ".join(visas) if visas else ""
 
-        # Location: simple keyword extraction.
-        post.location = self._extract_location(text + " " + post.title)
-
-        # Job type from categories is not available in the RSS teaser.
-        post.job_type = ""
+        # Location: simple keyword extraction if not already set.
+        if not post.location:
+            post.location = self._extract_location(text + " " + post.title)
 
     @staticmethod
     def _normalize_visa(value: str) -> str:

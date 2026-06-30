@@ -397,6 +397,13 @@ _PORTAL_SEED_EXTRA: list[dict[str, Any]] = [
     {"key": "work_location",                 "ru": "Локация",                                             "en": "Location",                                   "ko": "지역", "kind": "ui", "module": "portal"},
     {"key": "work_job_type",                 "ru": "Тип работы",                                          "en": "Job type",                                   "ko": "직종", "kind": "ui", "module": "portal"},
     {"key": "work_original_link",            "ru": "Открыть оригинал",                                    "en": "Open original",                              "ko": "원문 보기", "kind": "ui", "module": "portal"},
+    {"key": "work_disclaimer",               "ru": "Объявления собраны из открытых источников с целью перевода и помощи неносителям корейского/английского языка. Права на оригинальные тексты принадлежат их авторам.", "en": "Postings are collected from public sources for translation and to help non-Korean/English speakers. Original texts belong to their respective authors.", "ko": "공개된 출처에서 수집된 공고는 번역 및 한국어/영어 비원어민 지원을 위해 제공됩니다. 원문의 권리는 해당 저작자에게 있습니다.", "kind": "ui", "module": "portal"},
+    {"key": "work_filter_location",          "ru": "Локация",                                             "en": "Location",                                   "ko": "지역", "kind": "ui", "module": "portal"},
+    {"key": "work_filter_source",            "ru": "Источник",                                            "en": "Source",                                     "ko": "출처", "kind": "ui", "module": "portal"},
+    {"key": "work_filter_period",            "ru": "Период",                                              "en": "Period",                                     "ko": "기간", "kind": "ui", "module": "portal"},
+    {"key": "work_filter_all",               "ru": "Все",                                                 "en": "All",                                        "ko": "전체", "kind": "ui", "module": "portal"},
+    {"key": "work_filter_all_time",          "ru": "За всё время",                                        "en": "All time",                                   "ko": "전체 기간", "kind": "ui", "module": "portal"},
+    {"key": "work_days",                     "ru": "дн.",                                                 "en": "days",                                       "ko": "일", "kind": "ui", "module": "portal"},
 ]
 
 

@@ -11,9 +11,46 @@
   <div class="work-header">
     <h1>{{ t('work_page_title', lang=lang) }}</h1>
     <form action="/work/fetch" method="post" class="work-fetch-form">
+      <input type="hidden" name="days" value="{{ selected_days or '14' }}">
       <button type="submit" class="avalone-btn avalone-btn-primary">{{ t('work_refresh', lang=lang) }}</button>
     </form>
   </div>
+
+  <div class="work-disclaimer">
+    {{ t('work_disclaimer', lang=lang) }}
+  </div>
+
+  <form class="work-filters" action="/work" method="get">
+    <div class="work-filter">
+      <label for="filter-location">{{ t('work_filter_location', lang=lang) }}</label>
+      <select id="filter-location" name="location" onchange="this.form.submit()">
+        <option value="" {% if not selected_location %}selected{% endif %}>{{ t('work_filter_all', lang=lang) }}</option>
+        {% for loc in locations %}
+        <option value="{{ loc }}" {% if selected_location == loc %}selected{% endif %}>{{ loc }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="work-filter">
+      <label for="filter-source">{{ t('work_filter_source', lang=lang) }}</label>
+      <select id="filter-source" name="source" onchange="this.form.submit()">
+        <option value="" {% if not selected_source %}selected{% endif %}>{{ t('work_filter_all', lang=lang) }}</option>
+        {% for src in sources %}
+        <option value="{{ src }}" {% if selected_source == src %}selected{% endif %}>{{ src }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="work-filter">
+      <label for="filter-days">{{ t('work_filter_period', lang=lang) }}</label>
+      <select id="filter-days" name="days" onchange="this.form.submit()">
+        <option value="7" {% if selected_days == '7' %}selected{% endif %}>7 {{ t('work_days', lang=lang) }}</option>
+        <option value="14" {% if selected_days == '14' %}selected{% endif %}>14 {{ t('work_days', lang=lang) }}</option>
+        <option value="30" {% if selected_days == '30' %}selected{% endif %}>30 {{ t('work_days', lang=lang) }}</option>
+        <option value="" {% if selected_days == '' %}selected{% endif %}>{{ t('work_filter_all_time', lang=lang) }}</option>
+      </select>
+    </div>
+  </form>
 
   {% if jobs %}
   <div class="job-list">

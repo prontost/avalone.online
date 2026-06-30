@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 
 from avalone_landing.core.jobs.models import JobPost
-from avalone_landing.core.jobs.parser import KoreabridgeRSSParser
+from avalone_landing.core.jobs.parser import ExpatComKoreaParser, KoreabridgeRSSParser
 from avalone_landing.core.jobs.repository import JobPostRepository
 from avalone_landing.core.jobs.service import JobPostService
 from avalone_landing.web.app import app
@@ -40,12 +40,36 @@ def test_parser_filters_old_posts() -> None:
     now = datetime.now(timezone.utc)
     old = now - timedelta(days=20)
     recent = now - timedelta(days=1)
-    parser = KoreabridgeRSSParser(max_age_days=14)
-    posts = parser.parse(_sample_xml([old, recent]))
+    parser = KoreabridgeRSSParser()
+    posts = parser.parse(_sample_xml([old, recent]), max_age_days=14)
 
     assert len(posts) == 1
     assert posts[0].external_guid == "job-1"
     assert "010-1234-5678" in posts[0].description_text
+
+
+def test_expat_parser_extracts_offers() -> None:
+    html = """
+    <html><body>
+    <script>
+    var offers = {"list": [
+        {"title": "Aircraft Fitters", "description": "<p>Work in Seoul. Contact 010-1111-2222</p>",
+         "name": "DAHER", "link": "https://www.expat.com/job/1", "address": "Seoul",
+         "contractType": "Fixed-term", "date": "Added on 28/06/2026"}
+    ]};
+    </script>
+    </body></html>
+    """
+    service = JobPostService(parser=ExpatComKoreaParser(), repository=JobPostRepository())
+    posts = service.parser.parse(html, max_age_days=14)
+    for post in posts:
+        service._extract_fields(post)
+
+    assert len(posts) == 1
+    assert posts[0].title == "Aircraft Fitters"
+    assert posts[0].source_site == "expat.com"
+    assert posts[0].location == "Seoul"
+    assert posts[0].contact_phone == "010-1111-2222"
 
 
 def test_service_extracts_contacts_and_visa() -> None:
@@ -84,6 +108,35 @@ def test_repository_saves_and_lists() -> None:
     rows = repo.list_recent(limit=10)
     guids = {r.external_guid for r in rows}
     assert "repo-test" in guids
+
+
+def test_repository_filters_by_source_and_location() -> None:
+    repo = JobPostRepository()
+    repo.save(
+        JobPost(
+            external_guid="filter-seoul",
+            source_site="expat.com",
+            source_url="https://example.com/seoul",
+            title="Seoul job",
+            description_html="",
+            description_text="",
+            location="Seoul",
+        )
+    )
+    repo.save(
+        JobPost(
+            external_guid="filter-busan",
+            source_site="koreabridge.net",
+            source_url="https://example.com/busan",
+            title="Busan job",
+            description_html="",
+            description_text="",
+            location="Busan",
+        )
+    )
+    seoul_jobs = repo.list_recent(source_site="expat.com", location="Seoul")
+    assert len(seoul_jobs) == 1
+    assert seoul_jobs[0].external_guid == "filter-seoul"
 
 
 def test_work_index_renders_feed() -> None:

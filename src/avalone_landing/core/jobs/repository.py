@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from avalone_core.db import connection
@@ -49,15 +49,37 @@ class JobPostRepository:
             con.commit()
             return cur.lastrowid or 0
 
-    def list_recent(self, limit: int = 100) -> list[JobPost]:
-        """Return the most recent posts, newest first."""
+    def list_recent(
+        self,
+        limit: int = 100,
+        location: str | None = None,
+        source_site: str | None = None,
+        max_age_days: int | None = None,
+    ) -> list[JobPost]:
+        """Return recent posts with optional filters."""
+        where: list[str] = []
+        params: list[Any] = []
+        if source_site:
+            where.append("source_site = ?")
+            params.append(source_site)
+        if location:
+            where.append("(location LIKE ? OR title LIKE ? OR description_text LIKE ?)")
+            like = f"%{location}%"
+            params.extend([like, like, like])
+        if max_age_days is not None:
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=max_age_days)).isoformat()
+            where.append("COALESCE(posted_at, parsed_at) >= ?")
+            params.append(cutoff)
+
         sql = (
             "SELECT * FROM work_job_posts "
-            "ORDER BY COALESCE(posted_at, parsed_at) DESC "
-            "LIMIT ?"
+            + ("WHERE " + " AND ".join(where) if where else "")
+            + " ORDER BY COALESCE(posted_at, parsed_at) DESC "
+            + "LIMIT ?"
         )
+        params.append(limit)
         with connection() as con:
-            rows = con.execute(sql, (limit,)).fetchall()
+            rows = con.execute(sql, params).fetchall()
         return [self._row_to_post(r) for r in rows]
 
     def list_untranslated(self, limit: int = 100) -> list[JobPost]:
@@ -85,6 +107,23 @@ class JobPostRepository:
                 (title_translated, description_translated, external_guid),
             )
             con.commit()
+
+    def list_sources(self) -> list[str]:
+        """Return all distinct source_site values currently in the DB."""
+        sql = "SELECT DISTINCT source_site FROM work_job_posts ORDER BY source_site"
+        with connection() as con:
+            rows = con.execute(sql).fetchall()
+        return [r["source_site"] for r in rows if r["source_site"]]
+
+    def list_locations(self) -> list[str]:
+        """Return distinct non-empty location values."""
+        sql = (
+            "SELECT DISTINCT location FROM work_job_posts "
+            "WHERE location IS NOT NULL AND location != '' ORDER BY location"
+        )
+        with connection() as con:
+            rows = con.execute(sql).fetchall()
+        return [r["location"] for r in rows]
 
     def count(self) -> int:
         with connection() as con:
