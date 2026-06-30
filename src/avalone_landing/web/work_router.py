@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 
+from avalone_landing.core.jobs.location_repository import LocationTranslationRepository
 from avalone_landing.core.jobs.service import JobPostService
 from avalone_landing.web.dependencies import current_user, get_shell_context
 from avalone_landing.web.shell_context import ShellContext
@@ -41,6 +42,7 @@ async def work_index(
     visa: str = "",
     job_type: str = "",
     country: str = "",
+    loc_lang: str = "ru",
     page: str = "1",
     user=Depends(current_user),
     shell_context: ShellContext = Depends(get_shell_context),
@@ -77,11 +79,20 @@ async def work_index(
     jobs = service.list_recent(limit=PAGE_SIZE, offset=offset, **filters)
     total_pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
 
+    loc_repo = LocationTranslationRepository()
+    loc_repo.ensure_schema()
+
+    def _display_location(raw: str) -> str:
+        return loc_repo.get(raw, loc_lang) or raw
+
     ctx.update(
         {
             "jobs": jobs,
             "sources": service.repository.list_sources(),
             "locations": service.repository.list_locations(),
+            "location_labels": {
+                loc: _display_location(loc) for loc in service.repository.list_locations()
+            },
             "pay_types": service.repository.list_pay_types(),
             "visa_types": service.repository.list_visa_types(),
             "job_types": service.repository.list_job_types(),
@@ -93,6 +104,7 @@ async def work_index(
             "selected_visa": visa,
             "selected_job_type": job_type,
             "selected_country": country,
+            "selected_loc_lang": loc_lang,
             "current_page": current_page,
             "total_pages": total_pages,
             "total_jobs": total,

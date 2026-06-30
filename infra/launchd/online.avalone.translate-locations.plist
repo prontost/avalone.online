@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>online.avalone.translate-locations</string>
+    <key>WorkingDirectory</key>
+    <string>/Users/lucifer/github-work/avalone.online</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/lucifer/github-work/avalone.online/.venv/bin/python</string>
+        <string>/Users/lucifer/github-work/avalone.online/scripts/translate_locations.py</string>
+        <string>--batch</string>
+        <string>5</string>
+        <string>--loop</string>
+        <string>--interval</string>
+        <string>60</string>
+        <string>--max-failures</string>
+        <string>10</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/lucifer/Library/Logs/avalone-translate-locations.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/lucifer/Library/Logs/avalone-translate-locations.log</string>
+</dict>
+</plist>

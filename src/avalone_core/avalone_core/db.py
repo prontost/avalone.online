@@ -221,6 +221,14 @@ CREATE TABLE IF NOT EXISTS work_job_posts (
 CREATE INDEX IF NOT EXISTS idx_work_job_posts_posted_at ON work_job_posts(posted_at);
 CREATE INDEX IF NOT EXISTS idx_work_job_posts_source_site ON work_job_posts(source_site);
 
+-- Work module: translations for dynamic enum-like values (locations, etc.)
+CREATE TABLE IF NOT EXISTS work_location_translations (
+    location TEXT PRIMARY KEY,
+    ru       TEXT,
+    en       TEXT,
+    ko       TEXT
+);
+
 -- Work module has been removed; legacy work_* tables are dropped on migration.
 
 -- Unified glossary is owned by GlossaryRepository (avalone_core.glossary_service).
@@ -378,6 +386,13 @@ def _apply_migrations() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_work_job_posts_posted_at ON work_job_posts(posted_at);
             CREATE INDEX IF NOT EXISTS idx_work_job_posts_source_site ON work_job_posts(source_site);
+
+            CREATE TABLE IF NOT EXISTS work_location_translations (
+                location TEXT PRIMARY KEY,
+                ru       TEXT,
+                en       TEXT,
+                ko       TEXT
+            );
             """
         )
         # Idempotent column/index additions for existing work_job_posts tables.

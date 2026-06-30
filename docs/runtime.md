@@ -27,13 +27,13 @@
 │   (единая БД портала, финансов, работы) │
 └──────────────┬──────────────────────────┘
                │
-   ┌───────────┴───────────┐
-   ▼                       ▼
-online.avalone.fetch  online.avalone.translate
-scripts/fetch_jobs.py   scripts/translate_jobs.py
-каждые 5 мин            loop, раз в 60 с
-   ▲                       ▲
-   └───────────┬───────────┘
+   ┌───────────┴───────────┬─────────────────────────┐
+   ▼                       ▼                         ▼
+online.avalone.fetch  online.avalone.translate  online.avalone.translate-locations
+scripts/fetch_jobs.py   scripts/translate_jobs.py scripts/translate_locations.py
+каждые 5 мин            loop, раз в 60 с         loop, раз в 60 с
+   ▲                       ▲                        ▲
+   └───────────┬───────────┴────────────────────────┘
                │ HTTP/API корейских досок
         Albamon, Saramin, JobKorea,
         114114, Koreabridge
@@ -50,6 +50,7 @@ infra/backup/backup_db.py
 | `online.avalone.landing` | Веб-портал | launchd / systemd | `~/Library/Logs/avalone-landing.log` | `127.0.0.1:8811` |
 | `online.avalone.fetch` | Парсинг вакансий | launchd `StartInterval=300` / systemd timer | `~/Library/Logs/avalone-fetch.log` | пишет в БД |
 | `online.avalone.translate` | Перевод новых постов | launchd `KeepAlive` / systemd service | `~/Library/Logs/avalone-translate.log` | пишет в БД |
+| `online.avalone.translate-locations` | Перевод локаций для фильтра | launchd `KeepAlive` / systemd service | `~/Library/Logs/avalone-translate-locations.log` | пишет в БД |
 | `online.avalone.db-backup` | Ротация бэкапов БД | launchd `StartInterval=3600` / systemd timer | `~/Library/Logs/db-backup.log` | `~/.avalone/backups/auto` |
 | `online.avalone.tunnel` | Cloudflare tunnel | launchd / systemd | `~/Library/Logs/counta-tunnel.log` | `cloudflared` |
 
@@ -253,7 +254,35 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now avalone-translate
 ```
 
-### 7. systemd timer — backup
+### 7. systemd service — translate-locations
+
+`/etc/systemd/system/avalone-translate-locations.service`:
+
+```ini
+[Unit]
+Description=Avalone location translator loop
+After=network.target
+
+[Service]
+Type=simple
+User=avalone
+Group=avalone
+WorkingDirectory=/home/avalone/avalone.online
+ExecStart=/home/avalone/avalone.online/.venv/bin/python scripts/translate_locations.py --batch 5 --loop --interval 60 --max-failures 10
+Restart=always
+RestartSec=10
+Environment="PATH=/home/avalone/.local/bin:/usr/local/bin:/usr/bin:/bin"
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now avalone-translate-locations
+```
+
+### 8. systemd timer — backup
 
 `/etc/systemd/system/avalone-backup.service`:
 
@@ -288,7 +317,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now avalone-backup.timer
 ```
 
-### 8. Публикация наружу
+### 9. Публикация наружу
 
 Вариант A — Cloudflare tunnel (как сейчас):
 
@@ -339,10 +368,13 @@ curl -N http://127.0.0.1:8811/work/events
 # 5. Перевод не падает
 journalctl -u avalone-translate -f
 
-# 6. Fetch не падает
+# 6. Перевод локаций не падает
+journalctl -u avalone-translate-locations -f
+
+# 7. Fetch не падает
 journalctl -u avalone-fetch -f
 
-# 7. Бэкапы создаются
+# 8. Бэкапы создаются
 ls -la ~/.avalone/backups/auto
 ```
 
@@ -355,6 +387,10 @@ ls -la ~/.avalone/backups/auto
 ### Перевод остановился
 
 Смотреть `~/Library/Logs/avalone-translate.log` или `journalctl -u avalone-translate`. Возможные причины: Kimi CLI недоступен, исчерпан лимит, сеть.
+
+### Перевод локаций остановился
+
+Смотреть `~/Library/Logs/avalone-translate-locations.log` или `journalctl -u avalone-translate-locations`. Таблица `work_location_translations` должна постепенно заполняться уникальными локациями.
 
 ### Fetch не приносит новые посты
 
