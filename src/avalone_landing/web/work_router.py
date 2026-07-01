@@ -42,7 +42,7 @@ async def work_index(
     visa: str = "",
     job_type: str = "",
     country: str = "",
-    loc_lang: str = "ru",
+    loc_lang: str = "",
     page: str = "1",
     user=Depends(current_user),
     shell_context: ShellContext = Depends(get_shell_context),
@@ -51,6 +51,28 @@ async def work_index(
     from avalone_landing.web.app import _no_cache, templates
 
     ctx = _shell_context(request, shell_context)
+
+    # The language selector on /work controls both the UI language and the
+    # language used for dynamic values (locations, job types, etc.). We persist
+    # the choice in the same cookie that LanguageService.detect() reads so the
+    # shell renders consistently on the next request.
+    effective_lang = loc_lang or ctx.get("lang") or "ru"
+    current_cookie = request.cookies.get("avalone_lang", "")
+    if effective_lang != current_cookie:
+        response = RedirectResponse(
+            url=str(request.url.replace_query_params(**dict(request.query_params))),
+            status_code=302,
+        )
+        response.set_cookie(
+            "avalone_lang",
+            effective_lang,
+            max_age=365 * 24 * 60 * 60,
+            httponly=False,
+            samesite="lax",
+        )
+        return response
+    loc_lang = effective_lang
+
     service = JobPostService()
 
     try:
