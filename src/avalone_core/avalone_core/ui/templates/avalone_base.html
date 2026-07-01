@@ -1,12 +1,27 @@
 <!doctype html>
-<html lang="{{ lang|default('ru') }}" translate="no">
+<html lang="{{ lang|default('ru') }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark light">
   <meta name="theme-color" content="#0a0c10">
-  <meta name="google" content="notranslate">
   <title>{% block title %}{{ t('brand', lang=lang|default('ru')) }}{% endblock %}</title>
+  <script>
+  // Disable auto-translation only when running as an installed PWA. In the
+  // browser we keep Google Translate available for users who don't speak any
+  // of the languages we currently support (ru/en/ko).
+  (function () {
+    var isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                       navigator.standalone === true;
+    if (isStandalone) {
+      var meta = document.createElement('meta');
+      meta.name = 'google';
+      meta.content = 'notranslate';
+      document.head.appendChild(meta);
+      document.documentElement.setAttribute('translate', 'no');
+    }
+  })();
+  </script>
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/icon-192.png">
   <link rel="icon" type="image/png" href="/icon-192.png">
