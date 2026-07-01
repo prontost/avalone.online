@@ -18,6 +18,7 @@ progress.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -48,7 +49,6 @@ def _log(message: str) -> None:
 def _build_prompt(posts: list[Any], target_lang: str, source_lang: str) -> str:
     lang_names = {"ru": "Russian", "en": "English", "ko": "Korean"}
     target_name = lang_names.get(target_lang, target_lang)
-    source_name = lang_names.get(source_lang, source_lang)
     payload = [
         {
             "external_guid": p.external_guid,
@@ -58,8 +58,8 @@ def _build_prompt(posts: list[Any], target_lang: str, source_lang: str) -> str:
         for p in posts
     ]
     return (
-        f"You are a professional translator. Translate the following job postings "
-        f"from {source_name} to {target_name}. "
+        f"You are a professional translator. Detect the source language of each job posting "
+        f"(it is usually Korean or English) and translate it to {target_name}. "
         "Return ONLY a valid JSON array. Each object must contain exactly the keys "
         "external_guid, title_translated, description_translated. "
         "Preserve the structure and line breaks of the description. "
@@ -111,29 +111,57 @@ def _translate_batch(posts: list[Any], target_lang: str, source_lang: str) -> di
     return {item["external_guid"]: item for item in data}
 
 
+def _is_already_target_language(text: str, target_lang: str) -> bool:
+    """Return True if ``text`` already appears to be in the target language."""
+    if not text:
+        return False
+    if target_lang == "ko":
+        return bool(re.search(r"[\uac00-\ud7af]", text))
+    if target_lang == "ru":
+        return bool(re.search(r"[\u0400-\u04ff]", text))
+    if target_lang == "en":
+        # Consider English if it has Latin letters and no Hangul/Cyrillic.
+        has_latin = bool(re.search(r"[a-zA-Z]", text))
+        has_non_latin_script = bool(re.search(r"[\uac00-\ud7af\u0400-\u04ff]", text))
+        return has_latin and not has_non_latin_script
+    return False
+
+
 def _apply_batch(
     service: JobPostService,
     batch: list[Any],
     mapping: dict[str, dict[str, str]],
+    target_lang: str,
 ) -> int:
     applied = 0
     for post in batch:
         item = mapping.get(post.external_guid)
-        if not item:
-            _log(f"No translation returned for {post.external_guid}")
-            continue
         title = (item.get("title_translated") or "").strip()
         description = (item.get("description_translated") or "").strip()
+
+        # If the source is already in the target language, preserve it as-is.
+        if not title and _is_already_target_language(post.title, target_lang):
+            title = post.title
+        if (
+            not description
+            and _is_already_target_language(post.description_text, target_lang)
+        ):
+            description = post.description_text
+
         if not title or not description:
-            _log(
-                f"Empty translation returned for {post.external_guid} "
-                f"(title={bool(title)}, desc={bool(description)})"
-            )
+            if not item:
+                _log(f"No translation returned for {post.external_guid}")
+            else:
+                _log(
+                    f"Empty translation returned for {post.external_guid} "
+                    f"(title={bool(title)}, desc={bool(description)})"
+                )
             continue
         service.repository.update_translations(
             post.external_guid,
             title,
             description,
+            lang=target_lang,
         )
         applied += 1
     return applied
@@ -162,6 +190,7 @@ def _translate_loop(
         untranslated = service.list_untranslated(
             limit=batch_limit,
             max_age_days=args.max_age_days,
+            lang=args.lang,
         )
         if not untranslated:
             _log("No untranslated postings left. Worker finished.")
@@ -180,7 +209,7 @@ def _translate_loop(
 
         try:
             mapping = _translate_batch(untranslated, args.lang, args.source)
-            applied = _apply_batch(service, untranslated, mapping)
+            applied = _apply_batch(service, untranslated, mapping, args.lang)
         except Exception as exc:
             stats["failures"] += 1
             _log(f"Batch failed: {exc}")
@@ -205,7 +234,7 @@ def _translate_loop(
 
 def main() -> int:
     parser = ArgumentParser(description="Translate job postings via Kimi CLI")
-    parser.add_argument("--lang", default="ru", choices=["ru", "en", "ko"], help="Target language")
+    parser.add_argument("--lang", default="ru", choices=["ru", "en", "ko", "all"], help="Target language ('all' rotates through ru, en, ko)")
     parser.add_argument("--source", default="en", choices=["ru", "en", "ko"], help="Source language")
     parser.add_argument("--batch", type=int, default=5, help="Posts per kimi prompt")
     parser.add_argument(
@@ -258,11 +287,25 @@ def main() -> int:
     if args.timeout_seconds > 0:
         deadline = time.time() + args.timeout_seconds
 
-    _log("Translation worker started.")
-    stats = _translate_loop(service, args, deadline)
+    target_langs = ["ru", "en", "ko"] if args.lang == "all" else [args.lang]
+    total_stats = {"total_seen": 0, "translated": 0, "batches": 0, "failures": 0}
+
+    for target_lang in target_langs:
+        args.lang = target_lang
+        _log(f"Translation worker started for {target_lang}.")
+        stats = _translate_loop(service, args, deadline)
+        total_stats["total_seen"] += stats["total_seen"]
+        total_stats["translated"] += stats["translated"]
+        total_stats["batches"] += stats["batches"]
+        total_stats["failures"] += stats["failures"]
+        _log(
+            f"Done for {target_lang}. {stats['translated']} postings translated "
+            f"in {stats['batches']} batches ({stats['failures']} failures)."
+        )
+
     _log(
-        f"Done. {stats['translated']} postings translated "
-        f"in {stats['batches']} batches ({stats['failures']} failures)."
+        f"All done. {total_stats['translated']} postings translated "
+        f"in {total_stats['batches']} batches ({total_stats['failures']} failures)."
     )
     return 0
 

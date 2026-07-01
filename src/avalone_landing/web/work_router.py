@@ -120,9 +120,13 @@ async def work_index(
         "country": country or None,
     }
 
-    total = service.count_recent(**filters)
-    jobs = service.list_recent(limit=PAGE_SIZE, offset=offset, **filters)
+    total = service.count_recent(query_lang=loc_lang, **filters)
+    jobs = service.list_recent(
+        limit=PAGE_SIZE, offset=offset, query_lang=loc_lang, **filters
+    )
     total_pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
+
+    translations = service.attach_translations(jobs, loc_lang)
 
     loc_repo = LocationTranslationRepository()
     loc_repo.ensure_schema()
@@ -156,6 +160,7 @@ async def work_index(
             "selected_job_type": job_type,
             "selected_country": country,
             "selected_loc_lang": loc_lang,
+            "translations": translations,
             "display_location": _display_location_list,
             "current_page": current_page,
             "total_pages": total_pages,

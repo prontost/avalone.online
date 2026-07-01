@@ -140,8 +140,9 @@
         {% endif %}
       </div>
 
+      {% set tr = translations.get(job.external_guid, {}) %}
       <h2 class="job-card__title job-title-translated">
-        {{ job.title_translated or job.title }}
+        {{ tr.title or job.title }}
       </h2>
       <h2 class="job-card__title job-title-original">
         {{ job.title }}
@@ -162,7 +163,7 @@
       {% endif %}
 
       <div class="job-card__body job-body-translated">
-        {{ (job.description_translated or job.description_text or job.description_html)|safe }}
+        {{ (tr.description or job.description_text or job.description_html)|safe }}
       </div>
       <div class="job-card__body job-body-original">
         {{ job.description_text|safe }}

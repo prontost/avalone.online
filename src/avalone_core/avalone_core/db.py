@@ -393,6 +393,16 @@ def _apply_migrations() -> None:
                 en       TEXT,
                 ko       TEXT
             );
+
+            CREATE TABLE IF NOT EXISTS work_post_translations (
+                external_guid TEXT NOT NULL,
+                lang          TEXT NOT NULL,
+                title         TEXT,
+                description   TEXT,
+                updated_at    TEXT NOT NULL,
+                PRIMARY KEY (external_guid, lang)
+            );
+            CREATE INDEX IF NOT EXISTS idx_work_post_translations_lang ON work_post_translations(lang);
             """
         )
         # Idempotent column/index additions for existing work_job_posts tables.
@@ -414,6 +424,19 @@ def _apply_migrations() -> None:
                 )
             except sqlite3.OperationalError:
                 pass
+
+        # Migrate legacy single-language translations into the new per-language table.
+        try:
+            con.execute(
+                """
+                INSERT OR IGNORE INTO work_post_translations (external_guid, lang, title, description, updated_at)
+                SELECT external_guid, 'ru', title_translated, description_translated, parsed_at
+                FROM work_job_posts
+                WHERE COALESCE(title_translated, '') != ''
+                """
+            )
+        except sqlite3.OperationalError:
+            pass
         con.commit()
 
 

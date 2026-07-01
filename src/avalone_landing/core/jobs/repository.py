@@ -34,6 +34,7 @@ class JobPostRepository:
                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     row,
                 )
+                self._save_legacy_translation(con, post)
                 con.commit()
                 return cur.lastrowid or 0, "inserted"
 
@@ -100,6 +101,7 @@ class JobPostRepository:
                     existing["id"],
                 ),
             )
+            self._save_legacy_translation(con, post)
             con.commit()
             return existing["id"], "updated"
 
@@ -114,6 +116,7 @@ class JobPostRepository:
         visa_type: str | None = None,
         job_type: str | None = None,
         country: str | None = None,
+        query_lang: str = "ru",
     ) -> list[JobPost]:
         """Return recent posts with optional filters."""
         where, params = self._build_where(
@@ -124,6 +127,7 @@ class JobPostRepository:
             visa_type=visa_type,
             job_type=job_type,
             country=country,
+            query_lang=query_lang,
         )
 
         sql = (
@@ -146,6 +150,7 @@ class JobPostRepository:
         visa_type: str | None = None,
         job_type: str | None = None,
         country: str | None = None,
+        query_lang: str = "ru",
     ) -> int:
         where, params = self._build_where(
             location=location,
@@ -155,6 +160,7 @@ class JobPostRepository:
             visa_type=visa_type,
             job_type=job_type,
             country=country,
+            query_lang=query_lang,
         )
         sql = (
             "SELECT COUNT(*) AS n FROM work_job_posts "
@@ -173,6 +179,7 @@ class JobPostRepository:
         visa_type: str | None = None,
         job_type: str | None = None,
         country: str | None = None,
+        query_lang: str = "ru",
     ) -> tuple[list[str], list[Any]]:
         where: list[str] = []
         params: list[Any] = []
@@ -190,10 +197,12 @@ class JobPostRepository:
         if query:
             q = f"%{query}%"
             where.append(
-                "(title LIKE ? OR title_translated LIKE ? OR description_text LIKE ? "
-                "OR description_translated LIKE ? OR employer LIKE ? OR location LIKE ?)"
+                "(title LIKE ? OR description_text LIKE ? OR employer LIKE ? OR location LIKE ? "
+                "OR EXISTS (SELECT 1 FROM work_post_translations t "
+                "WHERE t.external_guid = work_job_posts.external_guid AND t.lang = ? "
+                "AND (t.title LIKE ? OR t.description LIKE ?)))"
             )
-            params.extend([q, q, q, q, q, q])
+            params.extend([q, q, q, q, query_lang, q, q])
         if visa_type:
             where.append("visa_type LIKE ?")
             params.append(f"%{visa_type}%")
@@ -210,15 +219,20 @@ class JobPostRepository:
         self,
         limit: int = 100,
         max_age_days: int | None = None,
+        lang: str = "ru",
     ) -> list[JobPost]:
-        """Return posts that have no translated title yet, oldest first.
+        """Return posts that have no translation for ``lang`` yet, oldest first.
 
         Args:
             limit: Maximum rows to return.
             max_age_days: If set, ignore posts older than this many days.
+            lang: Target language code.
         """
-        where = ["COALESCE(title_translated, '') = ''"]
-        params: list[Any] = []
+        where = [
+            "NOT EXISTS (SELECT 1 FROM work_post_translations t "
+            "WHERE t.external_guid = work_job_posts.external_guid AND t.lang = ?)"
+        ]
+        params: list[Any] = [lang]
         if max_age_days is not None:
             cutoff = (datetime.now(timezone.utc) - timedelta(days=max_age_days)).isoformat()
             where.append("COALESCE(posted_at, parsed_at) >= ?")
@@ -256,14 +270,78 @@ class JobPostRepository:
         external_guid: str,
         title_translated: str,
         description_translated: str,
+        lang: str = "ru",
     ) -> None:
         with connection() as con:
             con.execute(
-                "UPDATE work_job_posts SET title_translated = ?, description_translated = ? "
-                "WHERE external_guid = ?",
-                (title_translated, description_translated, external_guid),
+                """
+                INSERT INTO work_post_translations (external_guid, lang, title, description, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(external_guid, lang) DO UPDATE SET
+                    title = excluded.title,
+                    description = excluded.description,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    external_guid,
+                    lang,
+                    title_translated,
+                    description_translated,
+                    datetime.now(timezone.utc).isoformat(),
+                ),
             )
             con.commit()
+
+    def _save_legacy_translation(self, con: sqlite3.Connection, post: JobPost) -> None:
+        """Persist legacy title_translated/description_translated into the new table."""
+        title = (post.title_translated or "").strip()
+        description = (post.description_translated or "").strip()
+        if not title and not description:
+            return
+        con.execute(
+            """
+            INSERT INTO work_post_translations (external_guid, lang, title, description, updated_at)
+            VALUES (?, 'ru', ?, ?, ?)
+            ON CONFLICT(external_guid, lang) DO UPDATE SET
+                title = excluded.title,
+                description = excluded.description,
+                updated_at = excluded.updated_at
+            """,
+            (
+                post.external_guid,
+                title or None,
+                description or None,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+
+    def get_translation(self, external_guid: str, lang: str) -> dict[str, str]:
+        with connection() as con:
+            row = con.execute(
+                "SELECT title, description FROM work_post_translations "
+                "WHERE external_guid = ? AND lang = ?",
+                (external_guid, lang),
+            ).fetchone()
+        if row:
+            return {"title": row["title"] or "", "description": row["description"] or ""}
+        return {"title": "", "description": ""}
+
+    def get_translations(
+        self, external_guids: list[str], lang: str
+    ) -> dict[str, dict[str, str]]:
+        if not external_guids:
+            return {}
+        placeholders = ",".join("?" * len(external_guids))
+        with connection() as con:
+            rows = con.execute(
+                f"SELECT external_guid, title, description FROM work_post_translations "
+                f"WHERE lang = ? AND external_guid IN ({placeholders})",
+                (lang, *external_guids),
+            ).fetchall()
+        return {
+            row["external_guid"]: {"title": row["title"] or "", "description": row["description"] or ""}
+            for row in rows
+        }
 
     def list_sources(self) -> list[str]:
         """Return all distinct source_site values currently in the DB."""

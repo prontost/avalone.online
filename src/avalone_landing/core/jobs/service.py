@@ -52,6 +52,7 @@ class JobPostService:
         visa_type: str | None = None,
         job_type: str | None = None,
         country: str | None = None,
+        query_lang: str = "ru",
     ) -> list[JobPost]:
         return self.repository.list_recent(
             limit=limit,
@@ -63,6 +64,7 @@ class JobPostService:
             visa_type=visa_type,
             job_type=job_type,
             country=country,
+            query_lang=query_lang,
         )
 
     def count_recent(
@@ -74,6 +76,7 @@ class JobPostService:
         visa_type: str | None = None,
         job_type: str | None = None,
         country: str | None = None,
+        query_lang: str = "ru",
     ) -> int:
         return self.repository.count_recent(
             location=location,
@@ -83,14 +86,23 @@ class JobPostService:
             visa_type=visa_type,
             job_type=job_type,
             country=country,
+            query_lang=query_lang,
         )
 
     def list_untranslated(
         self,
         limit: int = 100,
         max_age_days: int | None = None,
+        lang: str = "ru",
     ) -> list[JobPost]:
-        return self.repository.list_untranslated(limit, max_age_days)
+        return self.repository.list_untranslated(limit, max_age_days, lang=lang)
+
+    def attach_translations(
+        self, posts: list[JobPost], lang: str
+    ) -> dict[str, dict[str, str]]:
+        """Return a mapping external_guid -> {title, description} for ``lang``."""
+        guids = [p.external_guid for p in posts]
+        return self.repository.get_translations(guids, lang)
 
     def _extract_fields(self, post: JobPost) -> None:
         """Pull employer, phone, email, visa, location, and job type from the text."""
