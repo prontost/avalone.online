@@ -34,3 +34,13 @@ class JobPost:
     pay_type: str = ""
     content_hash: str = ""
     country: str = ""
+
+
+@dataclass
+class UserJobInteraction:
+    user_id: int
+    external_guid: str
+    liked_at: str | None = None
+    hidden_at: str | None = None
+    bookmarked_at: str | None = None
+    updated_at: str = ""

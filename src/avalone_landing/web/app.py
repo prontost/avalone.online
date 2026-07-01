@@ -70,9 +70,18 @@ templates.env.globals["now"] = lambda: datetime.now(timezone.utc)
 
 
 def _replace_query_param(query: object, key: str, value: object) -> str:
-    params = dict(query) if hasattr(query, "__iter__") else {}
+    from urllib.parse import parse_qsl, urlencode
+
+    if isinstance(query, str):
+        params = dict(parse_qsl(query))
+    elif hasattr(query, "multi_items"):
+        params = dict(query.multi_items())
+    elif hasattr(query, "__iter__"):
+        params = dict(query)
+    else:
+        params = {}
     params[key] = str(value)
-    return "&".join(f"{k}={v}" for k, v in params.items())
+    return urlencode(params)
 
 
 templates.env.filters["replace_query_param"] = _replace_query_param

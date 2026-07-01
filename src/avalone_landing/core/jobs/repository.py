@@ -117,6 +117,8 @@ class JobPostRepository:
         job_type: str | None = None,
         country: str | None = None,
         query_lang: str = "ru",
+        exclude_guids: list[str] | None = None,
+        include_only_guids: list[str] | None = None,
     ) -> list[JobPost]:
         """Return recent posts with optional filters."""
         where, params = self._build_where(
@@ -128,6 +130,8 @@ class JobPostRepository:
             job_type=job_type,
             country=country,
             query_lang=query_lang,
+            exclude_guids=exclude_guids,
+            include_only_guids=include_only_guids,
         )
 
         sql = (
@@ -151,6 +155,8 @@ class JobPostRepository:
         job_type: str | None = None,
         country: str | None = None,
         query_lang: str = "ru",
+        exclude_guids: list[str] | None = None,
+        include_only_guids: list[str] | None = None,
     ) -> int:
         where, params = self._build_where(
             location=location,
@@ -161,6 +167,8 @@ class JobPostRepository:
             job_type=job_type,
             country=country,
             query_lang=query_lang,
+            exclude_guids=exclude_guids,
+            include_only_guids=include_only_guids,
         )
         sql = (
             "SELECT COUNT(*) AS n FROM work_job_posts "
@@ -180,6 +188,8 @@ class JobPostRepository:
         job_type: str | None = None,
         country: str | None = None,
         query_lang: str = "ru",
+        exclude_guids: list[str] | None = None,
+        include_only_guids: list[str] | None = None,
     ) -> tuple[list[str], list[Any]]:
         where: list[str] = []
         params: list[Any] = []
@@ -213,6 +223,14 @@ class JobPostRepository:
         if country:
             where.append("country = ?")
             params.append(country)
+        if exclude_guids:
+            placeholders = ",".join("?" * len(exclude_guids))
+            where.append(f"external_guid NOT IN ({placeholders})")
+            params.extend(exclude_guids)
+        if include_only_guids:
+            placeholders = ",".join("?" * len(include_only_guids))
+            where.append(f"external_guid IN ({placeholders})")
+            params.extend(include_only_guids)
         return where, params
 
     def list_untranslated(

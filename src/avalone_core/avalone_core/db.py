@@ -403,6 +403,19 @@ def _apply_migrations() -> None:
                 PRIMARY KEY (external_guid, lang)
             );
             CREATE INDEX IF NOT EXISTS idx_work_post_translations_lang ON work_post_translations(lang);
+
+            CREATE TABLE IF NOT EXISTS work_user_interactions (
+                user_id       INTEGER NOT NULL,
+                external_guid TEXT NOT NULL,
+                liked_at      TEXT,
+                hidden_at     TEXT,
+                bookmarked_at TEXT,
+                updated_at    TEXT NOT NULL,
+                PRIMARY KEY (user_id, external_guid)
+            );
+            CREATE INDEX IF NOT EXISTS idx_work_user_interactions_hidden ON work_user_interactions(user_id, hidden_at);
+            CREATE INDEX IF NOT EXISTS idx_work_user_interactions_bookmarked ON work_user_interactions(user_id, bookmarked_at);
+            CREATE INDEX IF NOT EXISTS idx_work_user_interactions_liked ON work_user_interactions(user_id, liked_at);
             """
         )
         # Idempotent column/index additions for existing work_job_posts tables.

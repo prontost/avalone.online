@@ -6,8 +6,8 @@ import asyncio
 import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 
 from avalone_landing.core.jobs.location_repository import LocationTranslationRepository
 from avalone_landing.core.jobs.service import JobPostService
@@ -32,9 +32,18 @@ def _shell_context(request: Request, shell_context: ShellContext):
     )
 
 
-@router.get("", response_class=HTMLResponse)
-async def work_index(
+def _user_id(user) -> int | None:
+    return user.id if user is not None else None
+
+
+def _parse_bool(value: str) -> bool:
+    return value.lower() in ("1", "true", "yes", "on")
+
+
+async def _render_feed(
     request: Request,
+    shell_context: ShellContext,
+    loc_lang: str = "",
     location: str = "",
     source: str = "",
     days: str = "14",
@@ -42,12 +51,14 @@ async def work_index(
     visa: str = "",
     job_type: str = "",
     country: str = "",
-    loc_lang: str = "",
     page: str = "1",
-    user=Depends(current_user),
-    shell_context: ShellContext = Depends(get_shell_context),
+    show_hidden: bool = False,
+    only_saved: bool = False,
+    only_hidden: bool = False,
+    title_key: str = "work_page_title",
+    current_view: str = "feed",
 ):
-    """Render the job-postings feed with filters."""
+    """Shared renderer for /work, /work/saved and /work/hidden."""
     from avalone_landing.web.app import _no_cache, templates
 
     ctx = _shell_context(request, shell_context)
@@ -63,6 +74,7 @@ async def work_index(
     # language regardless of the query string.
     current_cookie = request.cookies.get("avalone_lang", "")
     clean_url = str(request.url.remove_query_params("loc_lang"))
+    user = ctx.get("user")
     user_has_explicit_lang = user is not None and getattr(user, "language", "auto") != "auto"
 
     if loc_lang:
@@ -97,6 +109,7 @@ async def work_index(
     loc_lang = effective_lang
 
     service = JobPostService()
+    user_id = _user_id(user)
 
     try:
         max_age_days = int(days) if days else None
@@ -120,13 +133,35 @@ async def work_index(
         "country": country or None,
     }
 
-    total = service.count_recent(query_lang=loc_lang, **filters)
+    exclude_guids: list[str] | None = None
+    include_only_guids: list[str] | None = None
+
+    if user_id is not None:
+        if only_hidden:
+            include_only_guids = list(service.hidden_guids(user_id))
+        elif only_saved:
+            include_only_guids = list(service.bookmarked_guids(user_id))
+        elif not show_hidden:
+            exclude_guids = list(service.hidden_guids(user_id))
+
+    total = service.count_recent(
+        query_lang=loc_lang,
+        exclude_guids=exclude_guids,
+        include_only_guids=include_only_guids,
+        **filters,
+    )
     jobs = service.list_recent(
-        limit=PAGE_SIZE, offset=offset, query_lang=loc_lang, **filters
+        limit=PAGE_SIZE,
+        offset=offset,
+        query_lang=loc_lang,
+        exclude_guids=exclude_guids,
+        include_only_guids=include_only_guids,
+        **filters,
     )
     total_pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
 
     translations = service.attach_translations(jobs, loc_lang)
+    interactions = service.attach_interactions(user_id, jobs)
 
     loc_repo = LocationTranslationRepository()
     loc_repo.ensure_schema()
@@ -160,15 +195,184 @@ async def work_index(
             "selected_job_type": job_type,
             "selected_country": country,
             "selected_loc_lang": loc_lang,
+            "show_hidden": show_hidden,
+            "only_saved": only_saved,
+            "only_hidden": only_hidden,
             "translations": translations,
+            "interactions": interactions,
             "display_location": _display_location_list,
             "current_page": current_page,
             "total_pages": total_pages,
             "total_jobs": total,
             "page_size": PAGE_SIZE,
+            "page_title_key": title_key,
+            "current_view": current_view,
         }
     )
     return _no_cache(templates.TemplateResponse(request, "work.html", ctx))
+
+
+@router.get("", response_class=HTMLResponse)
+async def work_index(
+    request: Request,
+    location: str = "",
+    source: str = "",
+    days: str = "14",
+    q: str = "",
+    visa: str = "",
+    job_type: str = "",
+    country: str = "",
+    loc_lang: str = "",
+    page: str = "1",
+    show_hidden: str = "",
+    only_saved: str = "",
+    shell_context: ShellContext = Depends(get_shell_context),
+):
+    """Render the main job-postings feed."""
+    return await _render_feed(
+        request,
+        shell_context,
+        loc_lang=loc_lang,
+        location=location,
+        source=source,
+        days=days,
+        q=q,
+        visa=visa,
+        job_type=job_type,
+        country=country,
+        page=page,
+        show_hidden=_parse_bool(show_hidden),
+        only_saved=_parse_bool(only_saved),
+    )
+
+
+@router.get("/saved", response_class=HTMLResponse)
+async def work_saved(
+    request: Request,
+    location: str = "",
+    source: str = "",
+    days: str = "14",
+    q: str = "",
+    visa: str = "",
+    job_type: str = "",
+    country: str = "",
+    loc_lang: str = "",
+    page: str = "1",
+    shell_context: ShellContext = Depends(get_shell_context),
+):
+    """Render the saved/bookmarked job postings."""
+    return await _render_feed(
+        request,
+        shell_context,
+        loc_lang=loc_lang,
+        location=location,
+        source=source,
+        days=days,
+        q=q,
+        visa=visa,
+        job_type=job_type,
+        country=country,
+        page=page,
+        only_saved=True,
+        title_key="work_saved_page_title",
+        current_view="saved",
+    )
+
+
+@router.get("/hidden", response_class=HTMLResponse)
+async def work_hidden(
+    request: Request,
+    location: str = "",
+    source: str = "",
+    days: str = "14",
+    q: str = "",
+    visa: str = "",
+    job_type: str = "",
+    country: str = "",
+    loc_lang: str = "",
+    page: str = "1",
+    shell_context: ShellContext = Depends(get_shell_context),
+):
+    """Render hidden/disliked job postings so the user can unhide them."""
+    return await _render_feed(
+        request,
+        shell_context,
+        loc_lang=loc_lang,
+        location=location,
+        source=source,
+        days=days,
+        q=q,
+        visa=visa,
+        job_type=job_type,
+        country=country,
+        page=page,
+        only_hidden=True,
+        title_key="work_hidden_page_title",
+        current_view="hidden",
+    )
+
+
+@router.post("/api/jobs/{external_guid}/interact")
+async def interact_with_job(
+    request: Request,
+    external_guid: str,
+    user=Depends(current_user),
+):
+    """Set or clear a single interaction flag for the authenticated user."""
+    if user is None:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    service = JobPostService()
+    interaction = service.apply_interaction(
+        user.id,
+        external_guid,
+        liked=payload.get("liked"),
+        hidden=payload.get("hidden"),
+        bookmarked=payload.get("bookmarked"),
+    )
+    return JSONResponse(
+        {
+            "ok": True,
+            "external_guid": interaction.external_guid,
+            "liked": interaction.liked_at is not None,
+            "hidden": interaction.hidden_at is not None,
+            "bookmarked": interaction.bookmarked_at is not None,
+        }
+    )
+
+
+@router.post("/api/jobs/bulk")
+async def bulk_interact_with_jobs(
+    request: Request,
+    user=Depends(current_user),
+):
+    """Apply the same interaction flag to many posts at once."""
+    if user is None:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    guids = payload.get("guids", [])
+    if not guids or not isinstance(guids, list):
+        raise HTTPException(status_code=400, detail="guids must be a non-empty list")
+
+    service = JobPostService()
+    count = service.apply_bulk_interactions(
+        user.id,
+        guids,
+        liked=payload.get("liked"),
+        hidden=payload.get("hidden"),
+        bookmarked=payload.get("bookmarked"),
+    )
+    return JSONResponse({"ok": True, "count": count})
 
 
 @router.get("/events")

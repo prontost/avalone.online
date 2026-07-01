@@ -1,6 +1,6 @@
 {% extends "avalone_base.html" %}
 
-{% block title %}{{ t('work_page_title', lang=lang) }} — {{ t('brand', lang=lang) }}{% endblock %}
+{% block title %}{{ t(page_title_key|default('work_page_title'), lang=lang) }} — {{ t('brand', lang=lang) }}{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="/static/work.css?v={{ build_id }}">
@@ -18,8 +18,13 @@
 {% block content %}
 <div class="avalone-work">
   <div class="work-header">
-    <h1>{{ t('work_page_title', lang=lang) }}</h1>
+    <h1>{{ t(page_title_key|default('work_page_title'), lang=lang) }}</h1>
     <div class="work-header__actions">
+      <nav class="work-view-tabs" aria-label="{{ t('work_view_tabs', lang=lang)|default('') }}">
+        <a class="work-view-tab{% if current_view == 'feed' %} active{% endif %}" href="/work">{{ t('work_tab_feed', lang=lang) }}</a>
+        <a class="work-view-tab{% if current_view == 'saved' %} active{% endif %}" href="/work/saved">{{ t('work_tab_saved', lang=lang) }}</a>
+        <a class="work-view-tab{% if current_view == 'hidden' %} active{% endif %}" href="/work/hidden">{{ t('work_tab_hidden', lang=lang) }}</a>
+      </nav>
       <button type="button" class="avalone-btn work-original-toggle" id="work-original-toggle">
         {{ t('work_show_original', lang=lang) }}
       </button>
@@ -111,6 +116,16 @@
     </div>
   </form>
 
+  <div class="work-view-chips">
+    {% if current_view == 'feed' %}
+    <a class="work-chip{% if only_saved %} active{% endif %}" href="?{{ request.query_params | replace_query_param('only_saved', '1') | replace_query_param('show_hidden', '') }}">{{ t('work_filter_saved_only', lang=lang) }}</a>
+    <a class="work-chip{% if show_hidden %} active{% endif %}" href="?{{ request.query_params | replace_query_param('show_hidden', '1') }}">{{ t('work_filter_show_hidden', lang=lang) }}</a>
+    {% if show_hidden or only_saved %}
+    <a class="work-chip" href="?{{ request.query_params | replace_query_param('show_hidden', '') | replace_query_param('only_saved', '') }}">{{ t('work_filter_reset_view', lang=lang) }}</a>
+    {% endif %}
+    {% endif %}
+  </div>
+
   <div id="work-new-posts-banner" class="work-new-posts-banner" style="display:none;">
     <span>{{ t('work_new_posts_banner', lang=lang) }}</span>
     <button type="button" class="avalone-btn avalone-btn-primary" id="work-new-posts-reload">
@@ -125,74 +140,110 @@
   {% endif %}
 
   {% if jobs %}
-  <div class="job-list">
-    {% for job in jobs %}
-    <article class="job-card">
-      <div class="job-card__meta">
-        {% if job.posted_at %}
-        <time class="job-card__date" datetime="{{ job.posted_at.isoformat() }}">
-          {{ job.posted_at.strftime('%Y-%m-%d') }} ({{ relative_date(job.posted_at, lang) }})
-        </time>
-        {% endif %}
-        <span class="job-card__source">{{ t('work_source_label', lang=lang) }}: {{ td(job.source_site, 'work_site', lang=selected_loc_lang) }}</span>
-        {% if job.posted_at and (now() - job.posted_at).days <= 1 %}
-        <span class="job-badge job-badge--new">{{ t('work_new_badge', lang=lang) }}</span>
-        {% endif %}
-      </div>
-
-      {% set tr = translations.get(job.external_guid, {}) %}
-      <h2 class="job-card__title job-title-translated">
-        {{ (tr.title or job.title)|safe }}
-      </h2>
-      <h2 class="job-card__title job-title-original">
-        {{ job.title }}
-      </h2>
-
-      {% if job.location or job.visa_type or job.job_type or job.pay_type or job.salary %}
-      <div class="job-card__tags">
-        {% if job.location %}<span class="job-tag job-tag--location">{{ display_location(job.location) }}</span>{% endif %}
-        {% if job.visa_type %}<span class="job-tag job-tag--visa">{{ t('work_visa_type', lang=lang) }}: {{ td_list(job.visa_type, 'work_visa', lang=selected_loc_lang) }}</span>{% endif %}
-        {% if job.job_type %}<span class="job-tag job-tag--type">{{ td(job.job_type, 'work_jobtype', lang=selected_loc_lang) }}</span>{% endif %}
-        {% if job.pay_type or job.salary %}
-        <span class="job-tag job-tag--salary">
-          {% if job.pay_type %}{{ job.pay_type }}{% endif %}
-          {% if job.salary %}{{ job.salary }}{% endif %}
-        </span>
-        {% endif %}
-      </div>
+  <div class="work-bulk-toolbar" id="work-bulk-toolbar">
+    <label class="work-bulk-checkbox">
+      <input type="checkbox" id="work-select-all" aria-label="{{ t('work_select_all', lang=lang) }}">
+      <span>{{ t('work_select_all', lang=lang) }}</span>
+    </label>
+    <div class="work-bulk-actions">
+      <button type="button" class="avalone-btn avalone-btn-secondary" data-action="hidden" data-value="true">{{ t('work_action_hide', lang=lang) }}</button>
+      <button type="button" class="avalone-btn avalone-btn-secondary" data-action="bookmarked" data-value="true">{{ t('work_action_bookmark', lang=lang) }}</button>
+      <button type="button" class="avalone-btn avalone-btn-secondary" data-action="liked" data-value="true">{{ t('work_action_like', lang=lang) }}</button>
+      {% if current_view == 'hidden' %}
+      <button type="button" class="avalone-btn avalone-btn-primary" data-action="hidden" data-value="false">{{ t('work_action_show', lang=lang) }}</button>
       {% endif %}
+    </div>
+    <span class="work-bulk-count" id="work-bulk-count"></span>
+  </div>
 
-      <div class="job-card__body job-body-translated">
-        {{ (tr.description or job.description_text or job.description_html)|safe }}
+  <div class="job-list" id="work-job-list">
+    {% for job in jobs %}
+    {% set tr = translations.get(job.external_guid, {}) %}
+    {% set interaction = interactions.get(job.external_guid, None) %}
+    {% set is_hidden = interaction and interaction.hidden_at %}
+    {% set is_liked = interaction and interaction.liked_at %}
+    {% set is_bookmarked = interaction and interaction.bookmarked_at %}
+    <article class="job-card{% if is_hidden %} job-card--hidden{% endif %}" data-guid="{{ job.external_guid }}">
+      <div class="job-card__select">
+        <input type="checkbox" class="job-card__checkbox" value="{{ job.external_guid }}" aria-label="{{ t('work_select_job', lang=lang) }}">
       </div>
-      <div class="job-card__body job-body-original">
-        {{ job.description_text|safe }}
-      </div>
+      <div class="job-card__content">
+        <div class="job-card__meta">
+          {% if job.posted_at %}
+          <time class="job-card__date" datetime="{{ job.posted_at.isoformat() }}">
+            {{ job.posted_at.strftime('%Y-%m-%d') }} ({{ relative_date(job.posted_at, lang) }})
+          </time>
+          {% endif %}
+          <span class="job-card__source">{{ t('work_source_label', lang=lang) }}: {{ td(job.source_site, 'work_site', lang=selected_loc_lang) }}</span>
+          {% if job.posted_at and (now() - job.posted_at).days <= 1 %}
+          <span class="job-badge job-badge--new">{{ t('work_new_badge', lang=lang) }}</span>
+          {% endif %}
+        </div>
 
-      <div class="job-card__contacts">
-        {% if job.employer %}
-        <div class="job-contact">
-          <span class="job-contact__label">{{ t('work_employer', lang=lang) }}:</span>
-          <span class="job-contact__value">{{ job.employer }}</span>
+        <h2 class="job-card__title job-title-translated">
+          {{ (tr.title or job.title)|safe }}
+        </h2>
+        <h2 class="job-card__title job-title-original">
+          {{ job.title }}
+        </h2>
+
+        {% if job.location or job.visa_type or job.job_type or job.pay_type or job.salary %}
+        <div class="job-card__tags">
+          {% if job.location %}<span class="job-tag job-tag--location">{{ display_location(job.location) }}</span>{% endif %}
+          {% if job.visa_type %}<span class="job-tag job-tag--visa">{{ t('work_visa_type', lang=lang) }}: {{ td_list(job.visa_type, 'work_visa', lang=selected_loc_lang) }}</span>{% endif %}
+          {% if job.job_type %}<span class="job-tag job-tag--type">{{ td(job.job_type, 'work_jobtype', lang=selected_loc_lang) }}</span>{% endif %}
+          {% if job.pay_type or job.salary %}
+          <span class="job-tag job-tag--salary">
+            {% if job.pay_type %}{{ job.pay_type }}{% endif %}
+            {% if job.salary %}{{ job.salary }}{% endif %}
+          </span>
+          {% endif %}
         </div>
         {% endif %}
-        {% if job.contact_phone %}
-        <div class="job-contact">
-          <span class="job-contact__label">{{ t('work_contact_phone', lang=lang) }}:</span>
-          <a class="job-contact__value" href="tel:{{ job.contact_phone }}">{{ job.contact_phone }}</a>
-        </div>
-        {% endif %}
-        {% if job.contact_email %}
-        <div class="job-contact">
-          <span class="job-contact__label">{{ t('work_contact_email', lang=lang) }}:</span>
-          <a class="job-contact__value" href="mailto:{{ job.contact_email }}">{{ job.contact_email }}</a>
-        </div>
-        {% endif %}
-      </div>
 
-      <a class="job-card__link" href="{{ job.source_url }}" target="_blank" rel="noopener">
-        {{ t('work_original_link', lang=lang) }}
-      </a>
+        <div class="job-card__body job-body-translated">
+          {{ (tr.description or job.description_text or job.description_html)|safe }}
+        </div>
+        <div class="job-card__body job-body-original">
+          {{ job.description_text|safe }}
+        </div>
+
+        <div class="job-card__contacts">
+          {% if job.employer %}
+          <div class="job-contact">
+            <span class="job-contact__label">{{ t('work_employer', lang=lang) }}:</span>
+            <span class="job-contact__value">{{ job.employer }}</span>
+          </div>
+          {% endif %}
+          {% if job.contact_phone %}
+          <div class="job-contact">
+            <span class="job-contact__label">{{ t('work_contact_phone', lang=lang) }}:</span>
+            <a class="job-contact__value" href="tel:{{ job.contact_phone }}">{{ job.contact_phone }}</a>
+          </div>
+          {% endif %}
+          {% if job.contact_email %}
+          <div class="job-contact">
+            <span class="job-contact__label">{{ t('work_contact_email', lang=lang) }}:</span>
+            <a class="job-contact__value" href="mailto:{{ job.contact_email }}">{{ job.contact_email }}</a>
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="job-card__actions">
+          <a class="avalone-btn avalone-btn-secondary job-card__link" href="{{ job.source_url }}" target="_blank" rel="noopener">
+            {{ t('work_original_link', lang=lang) }}
+          </a>
+          <button type="button" class="avalone-btn avalone-btn-ghost job-action-btn{% if is_liked %} active{% endif %}" data-action="liked" data-guid="{{ job.external_guid }}" title="{{ t('work_action_like', lang=lang) }}">
+            {{ t('work_action_like', lang=lang) }}
+          </button>
+          <button type="button" class="avalone-btn avalone-btn-ghost job-action-btn{% if is_bookmarked %} active{% endif %}" data-action="bookmarked" data-guid="{{ job.external_guid }}" title="{{ t('work_action_bookmark', lang=lang) }}">
+            {{ t('work_action_bookmark', lang=lang) }}
+          </button>
+          <button type="button" class="avalone-btn avalone-btn-ghost job-action-btn{% if is_hidden %} active{% endif %}" data-action="hidden" data-guid="{{ job.external_guid }}" title="{% if is_hidden %}{{ t('work_action_show', lang=lang) }}{% else %}{{ t('work_action_hide', lang=lang) }}{% endif %}">
+            {% if is_hidden %}{{ t('work_action_show', lang=lang) }}{% else %}{{ t('work_action_hide', lang=lang) }}{% endif %}
+          </button>
+        </div>
+      </div>
     </article>
     {% endfor %}
   </div>
@@ -218,7 +269,12 @@
   {% endif %}
 </div>
 
+<div class="work-toast" id="work-toast" role="status" aria-live="polite"></div>
+
 <script>
+document.body.dataset.user = '{{ user.id if user else '' }}';
+document.body.dataset.view = '{{ current_view }}';
+
 function setAvaloneLang(lang) {
   fetch('/api/lang', {
     method: 'POST',
@@ -231,7 +287,6 @@ function setAvaloneLang(lang) {
       window.location.href = url.toString();
     }
   }).catch(function () {
-    // Fallback for no-JS or network errors: set the cookie locally and reload.
     var maxAge = 365 * 24 * 60 * 60;
     document.cookie = 'avalone_lang=' + encodeURIComponent(lang) +
       ';path=/;max-age=' + maxAge + ';SameSite=Lax';
@@ -244,15 +299,15 @@ function setAvaloneLang(lang) {
 (function () {
   var container = document.querySelector('.avalone-work');
   var btn = document.getElementById('work-original-toggle');
-  if (!container || !btn) return;
-  var translatedLabel = {{ t('work_show_original', lang=lang)|tojson }};
-  var originalLabel = {{ t('work_show_translation', lang=lang)|tojson }};
-  btn.addEventListener('click', function () {
-    container.classList.toggle('show-original');
-    btn.textContent = container.classList.contains('show-original') ? originalLabel : translatedLabel;
-  });
+  if (container && btn) {
+    var translatedLabel = {{ t('work_show_original', lang=lang)|tojson }};
+    var originalLabel = {{ t('work_show_translation', lang=lang)|tojson }};
+    btn.addEventListener('click', function () {
+      container.classList.toggle('show-original');
+      btn.textContent = container.classList.contains('show-original') ? originalLabel : translatedLabel;
+    });
+  }
 
-  // Live updates: show a banner instead of forcing a reload so filters are not reset.
   var banner = document.getElementById('work-new-posts-banner');
   var reloadBtn = document.getElementById('work-new-posts-reload');
   if (banner && reloadBtn && typeof EventSource !== 'undefined') {
@@ -260,13 +315,160 @@ function setAvaloneLang(lang) {
     es.addEventListener('new-posts', function () {
       banner.style.display = 'flex';
     });
-    es.addEventListener('error', function () {
-      // The browser will automatically try to reconnect.
-    });
+    es.addEventListener('error', function () {});
     reloadBtn.addEventListener('click', function () {
       window.location.reload();
     });
   }
+
+  // --- interactions ---
+  var toastEl = document.getElementById('work-toast');
+  function showToast(message) {
+    if (!toastEl) return;
+    toastEl.textContent = message;
+    toastEl.classList.add('show');
+    setTimeout(function () { toastEl.classList.remove('show'); }, 2500);
+  }
+
+  function setLoading(el, loading) {
+    if (!el) return;
+    el.disabled = loading;
+    el.classList.toggle('loading', loading);
+  }
+
+  function interact(guid, action, value, el) {
+    if (!document.body.dataset.user) {
+      showToast({{ t('work_login_to_act', lang=lang)|tojson }});
+      return;
+    }
+    setLoading(el, true);
+    var payload = {};
+    payload[action] = value;
+    fetch('/work/api/jobs/' + encodeURIComponent(guid) + '/interact', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    }).then(function (r) {
+      setLoading(el, false);
+      if (!r.ok) throw new Error('status ' + r.status);
+      return r.json();
+    }).then(function (data) {
+      updateCardState(guid, data);
+      if (action === 'hidden' && value === true && document.body.dataset.view !== 'hidden') {
+        var card = document.querySelector('.job-card[data-guid="' + CSS.escape(guid) + '"]');
+        if (card) card.style.opacity = '0.4';
+      }
+      showToast({{ t('work_toast_ok', lang=lang)|tojson }});
+    }).catch(function () {
+      setLoading(el, false);
+      showToast({{ t('work_toast_err', lang=lang)|tojson }});
+    });
+  }
+
+  function updateCardState(guid, data) {
+    var card = document.querySelector('.job-card[data-guid="' + CSS.escape(guid) + '"]');
+    if (!card) return;
+    card.classList.toggle('job-card--hidden', !!data.hidden);
+    card.querySelectorAll('.job-action-btn').forEach(function (b) {
+      var action = b.dataset.action;
+      var active = !!data[action];
+      b.classList.toggle('active', active);
+      if (action === 'hidden') {
+        b.textContent = active ? {{ t('work_action_show', lang=lang)|tojson }} : {{ t('work_action_hide', lang=lang)|tojson }};
+      }
+    });
+  }
+
+  document.querySelectorAll('.job-action-btn').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var guid = button.dataset.guid;
+      var action = button.dataset.action;
+      var value = button.dataset.value === 'true' || !button.classList.contains('active');
+      interact(guid, action, value, button);
+    });
+  });
+
+  // --- bulk selection ---
+  var selectAll = document.getElementById('work-select-all');
+  var bulkToolbar = document.getElementById('work-bulk-toolbar');
+  var bulkCount = document.getElementById('work-bulk-count');
+  var list = document.getElementById('work-job-list');
+
+  function selectedGuids() {
+    var guids = [];
+    if (!list) return guids;
+    list.querySelectorAll('.job-card__checkbox:checked').forEach(function (cb) {
+      guids.push(cb.value);
+    });
+    return guids;
+  }
+
+  function updateBulkBar() {
+    var guids = selectedGuids();
+    if (bulkCount) {
+      bulkCount.textContent = guids.length ? guids.length + ' {{ t('work_selected', lang=lang)|default('selected') }}' : '';
+    }
+    if (bulkToolbar) {
+      bulkToolbar.classList.toggle('has-selection', guids.length > 0);
+    }
+    if (selectAll) {
+      var all = list ? list.querySelectorAll('.job-card__checkbox') : [];
+      var checked = list ? list.querySelectorAll('.job-card__checkbox:checked') : [];
+      selectAll.checked = all.length > 0 && all.length === checked.length;
+      selectAll.indeterminate = checked.length > 0 && checked.length < all.length;
+    }
+  }
+
+  if (selectAll) {
+    selectAll.addEventListener('change', function () {
+      var checked = selectAll.checked;
+      if (list) {
+        list.querySelectorAll('.job-card__checkbox').forEach(function (cb) {
+          cb.checked = checked;
+        });
+      }
+      updateBulkBar();
+    });
+  }
+
+  if (list) {
+    list.addEventListener('change', function (e) {
+      if (e.target.classList.contains('job-card__checkbox')) {
+        updateBulkBar();
+      }
+    });
+  }
+
+  document.querySelectorAll('.work-bulk-actions button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var guids = selectedGuids();
+      if (!guids.length) return;
+      if (!document.body.dataset.user) {
+        showToast({{ t('work_login_to_act', lang=lang)|tojson }});
+        return;
+      }
+      var action = btn.dataset.action;
+      var value = btn.dataset.value === 'true';
+      setLoading(btn, true);
+      fetch('/work/api/jobs/bulk', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({guids: guids, [action]: value})
+      }).then(function (r) {
+        setLoading(btn, false);
+        if (!r.ok) throw new Error('status ' + r.status);
+        return r.json();
+      }).then(function () {
+        showToast({{ t('work_toast_ok', lang=lang)|tojson }});
+        window.location.reload();
+      }).catch(function () {
+        setLoading(btn, false);
+        showToast({{ t('work_toast_err', lang=lang)|tojson }});
+      });
+    });
+  });
+
+  updateBulkBar();
 })();
 </script>
 {% endblock %}

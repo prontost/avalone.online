@@ -7,6 +7,7 @@ import json
 import re
 from datetime import datetime, timezone
 
+from .interaction_repository import UserJobInteractionRepository
 from .models import JobPost
 from .parser import AlbamonParser, BaseJobParser, KoreabridgeRSSParser, MultiSourceParser
 from .repository import JobPostRepository
@@ -19,9 +20,11 @@ class JobPostService:
         self,
         parser: BaseJobParser | None = None,
         repository: JobPostRepository | None = None,
+        interaction_repository: UserJobInteractionRepository | None = None,
     ) -> None:
         self.parser = parser or MultiSourceParser()
         self.repository = repository or JobPostRepository()
+        self.interactions = interaction_repository or UserJobInteractionRepository()
 
     def fetch_and_store(self, max_age_days: int = 14) -> dict[str, int]:
         """Fetch recent posts from all sources, extract fields, and persist them.
@@ -53,6 +56,8 @@ class JobPostService:
         job_type: str | None = None,
         country: str | None = None,
         query_lang: str = "ru",
+        exclude_guids: list[str] | None = None,
+        include_only_guids: list[str] | None = None,
     ) -> list[JobPost]:
         return self.repository.list_recent(
             limit=limit,
@@ -65,6 +70,8 @@ class JobPostService:
             job_type=job_type,
             country=country,
             query_lang=query_lang,
+            exclude_guids=exclude_guids,
+            include_only_guids=include_only_guids,
         )
 
     def count_recent(
@@ -77,6 +84,8 @@ class JobPostService:
         job_type: str | None = None,
         country: str | None = None,
         query_lang: str = "ru",
+        exclude_guids: list[str] | None = None,
+        include_only_guids: list[str] | None = None,
     ) -> int:
         return self.repository.count_recent(
             location=location,
@@ -87,6 +96,8 @@ class JobPostService:
             job_type=job_type,
             country=country,
             query_lang=query_lang,
+            exclude_guids=exclude_guids,
+            include_only_guids=include_only_guids,
         )
 
     def list_untranslated(
@@ -103,6 +114,55 @@ class JobPostService:
         """Return a mapping external_guid -> {title, description} for ``lang``."""
         guids = [p.external_guid for p in posts]
         return self.repository.get_translations(guids, lang)
+
+    def attach_interactions(
+        self, user_id: int | None, posts: list[JobPost]
+    ) -> dict[str, object]:
+        """Return a mapping external_guid -> UserJobInteraction for ``user_id``."""
+        if user_id is None or not posts:
+            return {}
+        guids = [p.external_guid for p in posts]
+        return self.interactions.get_for_user(user_id, guids)
+
+    def apply_interaction(
+        self,
+        user_id: int,
+        external_guid: str,
+        *,
+        liked: bool | None = None,
+        hidden: bool | None = None,
+        bookmarked: bool | None = None,
+    ) -> object:
+        """Set or clear a single interaction flag for a user and post."""
+        return self.interactions.upsert(
+            user_id, external_guid, liked=liked, hidden=hidden, bookmarked=bookmarked
+        )
+
+    def apply_bulk_interactions(
+        self,
+        user_id: int,
+        external_guids: list[str],
+        *,
+        liked: bool | None = None,
+        hidden: bool | None = None,
+        bookmarked: bool | None = None,
+    ) -> int:
+        """Apply the same interaction flag to many posts."""
+        count = 0
+        for guid in external_guids:
+            self.interactions.upsert(
+                user_id, guid, liked=liked, hidden=hidden, bookmarked=bookmarked
+            )
+            count += 1
+        return count
+
+    def hidden_guids(self, user_id: int) -> set[str]:
+        """Return the set of post GUIDs hidden by the user."""
+        return set(self.interactions.list_hidden(user_id, limit=10000))
+
+    def bookmarked_guids(self, user_id: int) -> set[str]:
+        """Return the set of post GUIDs bookmarked by the user."""
+        return set(self.interactions.list_bookmarked(user_id, limit=10000))
 
     def _extract_fields(self, post: JobPost) -> None:
         """Pull employer, phone, email, visa, location, and job type from the text."""
